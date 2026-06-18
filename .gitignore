@@ -1,5 +1,7 @@
 # DVC
-/data/raw/
+/data/raw/*
+!/data/raw/*.dvc
+!/data/raw/.gitignore
 .dvc/tmp/
 
 # Python
