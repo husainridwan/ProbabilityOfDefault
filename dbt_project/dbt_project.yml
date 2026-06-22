@@ -1,0 +1,30 @@
+# dbt_project/dbt_project.yml
+
+name: 'pd_transforms'         # Your project name (any name you like)
+version: '1.0.0'
+config-version: 2
+
+# This MUST match the profile name in profiles.yml
+profile: 'pd_portfolio'
+
+# This tells dbt where your models, analyses, tests, macros, and seeds are stored
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+
+# Seed configuration
+seeds:
+  pd_transforms:
+    +delimiter: ","
+    +quote: ""
+    +header: true
+    +column_types: {}   # empty dict – we'll cast later in staging
+    +csv_reader_options:
+      all_varchar: true  # tells DuckDB to read all columns as VARCHAR
+
+# Now, set the materialization for all models to 'table'
+models:
+  pd_transforms:               # This must be the same as 'name:' above
+    +materialized: table       # Every model will be a table, not a view

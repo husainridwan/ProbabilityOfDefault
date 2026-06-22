@@ -1,0 +1,56 @@
+version: 2
+
+seeds:
+  - name: data
+    description: "Raw loan data with all columns as VARCHAR to avoid type conversion errors"
+    config:
+      column_types:
+        loan_id: varchar
+        user_id: bigint
+        target: bigint
+        global_cardinal: bigint
+        cardinal_group: varchar
+        product: varchar
+        principal_due: double
+        max_amount: double
+        util_ratio: double
+        tenure: bigint
+        approval_date: varchar
+        due_date: varchar
+        age: bigint
+        state: varchar
+        emp_status: varchar
+        marital_status: varchar
+        edu_status: varchar
+        monthly_income: double
+        gender: varchar
+        acquisition_channel: varchar
+        bureau_availability: varchar
+        total_bureau_accounts: bigint
+        accounts_in_arrears: bigint
+        accounts_bad_condition: bigint
+        accounts_good_condition: bigint
+        amount_in_arrears: double
+        total_outstanding_debt: double
+        total_monthly_obligations: double
+        bureau_account_rating: bigint
+        is_thin_file: bigint
+        bureau_risk_category: varchar
+        prop_bad: double
+        has_written_off_account: bigint
+        count_written_off_accounts: bigint
+        has_doubtful_account: bigint
+        distinct_lender_count: bigint
+        credit_history_months: bigint
+        max_dpd_ever_bureau: varchar
+        max_dpd_last_12m: varchar
+        total_months_delinquent: varchar
+        has_90plus_dpd_flag: bigint
+        has_30plus_dpd_flag: bigint
+        months_since_last_delinquency: varchar
+        total_enquiry_count: bigint
+        distinct_enquiring_lenders: bigint
+        bureau_dsti: double
+        bureau_annual_dti: double
+        loan_to_income_ratio: double
+        bureau_health_score: bigint
