@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_data
+    description: "Cleaned and typed feature table for PD model"
+    columns:
+      - name: loan_id
+        description: "Unique identifier for each loan"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        tests:
+          - not_null
+      - name: target
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: credit_limit
+        tests:
+          - not_null
+      - name: bureau_availability
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['no_bureau', 'thin_file', 'firstcentral']
+      - name: is_thin_file
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
