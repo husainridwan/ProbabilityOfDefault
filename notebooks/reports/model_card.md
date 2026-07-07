@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Model type** | Soft-voting ensemble (Logistic Regression + Random Forest + LightGBM) |
+| **Model type** | Soft-voting ensemble (Logistic Regression + Random Forest + LightGBM) + Optuna |
 | **Segments** | Two separate models: C1 (first-time borrowers) and C2+ (returning borrowers) |
 | **Version** | 1.0 |
 | **Date** | July 2026 |

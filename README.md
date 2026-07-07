@@ -28,9 +28,10 @@
 | **Business problem** | Estimate default risk at loan origination for risk-based pricing and portfolio loss reduction |
 | **Dataset** | 619,655 loans (2023–2025) with borrower demographics, FirstCentral bureau data, and loan behaviour |
 | **Target** | Binary: 1 = default (90+ DPD or written-off), 0 = paid. Default rate: **20.79%** |
-| **Segments** | **C1** — first-time borrowers (DR: 42.9%) modelled separately from **C2+** — returning borrowers (DR: 5–28%) |
-| **Best C1 model** | `[Model name]` — AUC: **0.XX** · Gini: **0.XX** · KS: **0.XX** |
-| **Best C2+ model** | `[Model name]` — AUC: **0.XX** · Gini: **0.XX** · KS: **0.XX** |
+| **Segments** | **C1** — first-time borrowers (DR: 42.9%) modelled separately from |
+                 **C2+** — returning borrowers (DR: 5–28%) |
+| **Best C1 model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.6774** · Gini: **0.3548** · KS: **0.2561** |
+| **Best C2+ model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.7572** · Gini: **0.5144** · KS: **0.3816** |
 
 ---
 
@@ -80,15 +81,14 @@ Raw CSV (619k loans)
 ```
 PD/
 ├── 📂 data/
-│   ├── raw/                    # Original loan CSV (DVC-tracked, not in git)
-│   ├── processed/              # Parquet feature files (DVC-tracked)
-│   └── sample/                 # 10k-row anonymised demo dataset
-├── 📂 dbt_project/             # dbt models: staging → intermediate → mart
+│   ├── raw/                    
+│   └── processed/                
+├── 📂 dbt_project/             
 │   └── models/
-│       ├── staging/            # Type casting, renaming
-│       ├── intermediate/       # Bureau feature engineering, prior behaviour
-│       └── marts/              # mart_pd_training_set (final feature table)
-├── 📂 models/                  # Serialised model artifacts (.pkl)
+│       ├── staging/            
+│       ├── intermediate/       
+│       └── marts/              
+├── 📂 models/                  
 │   ├── best_model_c1.pkl
 │   ├── best_model_c2plus.pkl
 │   └── inference_artifacts.json
@@ -102,13 +102,12 @@ PD/
 │   ├── model_comparison_c1.png
 │   └── model_card.md
 ├── 📂 src/
-│   ├── api/main.py             # FastAPI scoring endpoint
-│   ├── app/streamlit_app.py    # Streamlit dashboard
-│   └── preprocessing.py        # Shared inference preprocessing
-├── .dvc/                       # DVC configuration
-├── dvc.yaml                    # DVC pipeline
+│   ├── api/main.py          
+│   └── streamlit_app.py    
+├── .dvc/                   
+├── dvc.yaml                
 ├── requirements.txt
-├── Procfile                    # Railway deployment
+├── Procfile                
 └── README.md
 ```
 
@@ -201,23 +200,30 @@ streamlit run src/app/streamlit_app.py
 ### Feature Engineering
 
 - **24 features** surviving IV ranking (≥ 0.02) and correlation filter (r ≤ 0.85)
-- **Temporal grouped split**: train < 2025-01-01, val < 2025-07-01, test ≥ 2025-07-01
+- **Random user split**: Loans were split randomly into 70/15/15 (all loans per user in one split)
 - Users spanning periods go entirely into train — no borrower-level leakage
 - Prior behaviour features (`prior_loan_count`, `days_since_last_loan`) computed with expanding window sorted by `(user_id, approval_date)`
 - State risk tier encoded from training-set default rates only and applied to all splits
 
-### Modeling
 
-| Model | Segment | Val AUC | Val Gini | Val KS |
-|---|---|---|---|---|
-| Logistic Regression | C1 | 0.XX | 0.XX | 0.XX |
-| Logistic Regression | C2+ | 0.XX | 0.XX | 0.XX |
-| Random Forest | C1 | 0.XX | 0.XX | 0.XX |
-| Random Forest | C2+ | 0.XX | 0.XX | 0.XX |
-| LightGBM + Optuna | C1 | 0.XX | 0.XX | 0.XX |
-| LightGBM + Optuna | C2+ | 0.XX | 0.XX | 0.XX |
-| Soft-voting Ensemble | C1 | **0.XX** | **0.XX** | **0.XX** |
-| Soft-voting Ensemble | C2+ | **0.XX** | **0.XX** | **0.XX** |
+## 📊 Model Performance
+
+Both models were evaluated on a held‑out test set (randomly split by user).  
+The **Soft Voting Ensemble** was the best performer for both segments.
+
+| Segment | Model                   | Val AUC | Test AUC | Test Gini | Test KS |
+|---------|-------------------------|---------|----------|-----------|---------|
+| C1      | Logistic Regression     | 0.6629  | 0.6566   | 0.3131    | 0.2182  |
+| C1      | Random Forest           | 0.6848  | 0.6792   | 0.3584    | 0.2536  |
+| C1      | LightGBM + Optuna       | 0.6823  | 0.6759   | 0.3517    | 0.2513  |
+| C1      | **Ensemble (LR+RF+LGBM)** | **0.6851** | **0.6774** | **0.3548** | **0.2561** |
+| C2+     | Logistic Regression     | 0.7481  | 0.7433   | 0.4866    | 0.3628  |
+| C2+     | Random Forest           | 0.7614  | 0.7572   | 0.5144    | 0.3789  |
+| C2+     | LightGBM + Optuna       | 0.7592  | 0.7556   | 0.5112    | 0.3770  |
+| C2+     | **Ensemble (LR+RF+LGBM)** | **0.7619** | **0.7572** | **0.5144** | **0.3816** |
+
+Risk bands were calibrated from the validation set.  
+(See `models/inference_artifacts.json` for thresholds.)
 
 All models calibrated with isotonic regression on validation set.
 Cross-validation uses `StratifiedGroupKFold(groups=user_id)` to prevent borrower-level leakage within the training fold.
@@ -283,7 +289,7 @@ Response:
 
 ### Streamlit Dashboard
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app.streamlit.app)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pdapp.streamlit.app)
 
 Three tabs: **Credit Scorer** · **Model Performance** · **Methodology**
 
