@@ -12,8 +12,8 @@
 
 > **A production-grade end-to-end machine learning pipeline** that predicts the
 > probability of default (PD) for short-term installment loans in an emerging
-> market digital lending context. Built to IFRS 9 / Basel II standards with full
-> experiment tracking, SHAP explainability, and a live public scoring API.
+> market digital lending context, with full experiment tracking, SHAP explainability, 
+> and a live public scoring API.
 
 🔗 **[Live Demo](https://your-streamlit-url.streamlit.app)** &nbsp;|&nbsp;
 📡 **[API Docs](https://your-railway-url.up.railway.app/docs)** &nbsp;|&nbsp;
@@ -26,9 +26,9 @@
 | | |
 |---|---|
 | **Business problem** | Estimate default risk at loan origination for risk-based pricing and portfolio loss reduction |
-| **Dataset** | 619,655 loans (2023–2025) with borrower demographics, FirstCentral bureau data, and loan behaviour |
+| **Dataset** | 619,655 loans with borrower demographics, credit bureau data, and loan behaviour |
 | **Target** | Binary: 1 = default (90+ DPD or written-off), 0 = paid. Default rate: **20.79%** |
-| **Segments** | **C1** — first-time borrowers (DR: 42.9%) modelled separately from **C2+** — returning borrowers (DR: 5–28%) |
+| **Segments** | First-time borrowers (**C1**- DR: 42.9%) modelled separately from returning borrowers (**C2+**- DR: 5–28%) |
 | **Best C1 model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.6774** · Gini: **0.3548** · KS: **0.2561** |
 | **Best C2+ model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.7572** · Gini: **0.5144** · KS: **0.3816** |
 
@@ -41,9 +41,9 @@ Raw CSV (619k loans)
     │
     ▼
 ┌─────────────────────────────────┐
-│  Data Engineering               │
+│  Data Analytics                 │
 │  PostgreSQL SQL + dbt-duckdb    │
-│  Bureau JSON parsing (FC API)   │
+│  Bureau JSON parsing            │
 │  DVC for data versioning        │
 └────────────┬────────────────────┘
              │
@@ -58,7 +58,7 @@ Raw CSV (619k loans)
              ▼
 ┌─────────────────────────────────┐
 │  Model Development              │
-│  LR baseline → RF → LightGBM   │
+│  LR baseline → RF → LightGBM    │
 │  Optuna tuning (150 trials)     │
 │  Soft-voting ensemble           │
 │  MLflow experiment tracking     │
@@ -121,10 +121,10 @@ PD/
 ### 1 — Clone and install
 
 ```bash
-git clone https://github.com/husainridwan/pd-model.git
-cd pd-model
+git clone https://github.com/husainridwan/ProbabilityOfDefault.git
+cd PD
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate      
 pip install -r requirements.txt
 ```
 
@@ -134,7 +134,7 @@ pip install -r requirements.txt
 dvc pull
 ```
 
-> If you don't have DVC remote access, place your anonymised CSV at
+> If you don't have DVC remote access, place your csv data at
 > `data/raw/loan_data.csv` and run the notebooks in order.
 
 ### 3 — Run dbt transformations
@@ -168,20 +168,6 @@ mlflow ui --backend-store-uri ../mlruns
 
 Open [http://localhost:5000](http://localhost:5000) to compare all runs.
 
-### 6 — Run the API locally
-
-```bash
-uvicorn src.api.main:app --reload
-```
-
-Open [http://localhost:8000/docs](http://localhost:8000/docs) for interactive API docs.
-
-### 7 — Run the Streamlit dashboard locally
-
-```bash
-streamlit run src/app/streamlit_app.py
-```
-
 ---
 
 ## 🔬 Methodology
@@ -191,8 +177,8 @@ streamlit run src/app/streamlit_app.py
 | Stage | Tool | Description |
 |---|---|---|
 | SQL extraction | PostgreSQL + Metabase | Loan, user, bureau data joined across 3 tables |
-| Bureau parsing | Python + JSONB | FirstCentral `full_credit` array parsed at index 9 for payment history |
-| Transformation | dbt-duckdb | 3-layer model: staging → intermediate → mart |
+| Bureau parsing | Python + JSONB | Credit bureau json data |
+| Transformation | dbt-duckdb | 3-layer model: staging - intermediate - mart |
 | Data versioning | DVC | Raw and processed data tracked, not stored in git |
 | Quality checks | Great Expectations | Schema, null rate, range validation before any transformation |
 
@@ -227,7 +213,7 @@ Risk bands were calibrated from the validation set.
 All models calibrated with isotonic regression on validation set.
 Cross-validation uses `StratifiedGroupKFold(groups=user_id)` to prevent borrower-level leakage within the training fold.
 
-### Why Two Segments?
+### Why Two Models?
 
 EDA revealed a 30pp default rate gap between first-time borrowers (C1: 42.9%)
 and returning borrowers (C25+: 5.4%). A single model averages across these
@@ -247,50 +233,6 @@ signals; C2+ relies on prior loan count and borrowing frequency.
   than for C2+ borrowers where prior loan count dominates
 - 🚫 **Gender excluded** on both IV grounds (0.2pp gap) and CBN fair lending
   regulatory compliance
-
----
-
-## 🚀 Deployment
-
-### API (FastAPI on Railway)
-
-```bash
-# POST /predict
-curl -X POST https://your-railway-url.up.railway.app/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "loan_number": 1,
-    "principal_amount": 50000,
-    "tenure": 30,
-    "monthly_income": 150000,
-    "age": 32,
-    "state": "Lagos",
-    "employment_status": "Employed",
-    "product_type": "Standard",
-    "lender_count": 0
-  }'
-```
-
-Response:
-
-```json
-{
-  "probability_of_default": 0.187,
-  "risk_band": "Medium",
-  "model_used": "C1",
-  "top_drivers": {
-    "cardinal_log": "+5.2%",
-    "is_full_utilisation": "+3.8%",
-    "state_risk_tier_enc": "+1.9%"
-  }
-}
-```
-
-### Streamlit Dashboard
-
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pdapp.streamlit.app)
-
-Three tabs: **Credit Scorer** · **Model Performance** · **Methodology**
 
 ---
 
@@ -318,14 +260,14 @@ fairness considerations.
 
 | Layer | Tools |
 |---|---|
-| Data engineering | PostgreSQL · dbt-duckdb · DVC · Great Expectations |
+| Data analytics | PostgreSQL · dbt-duckdb · DVC · Great Expectations |
 | Feature engineering | Python · Pandas · NumPy |
 | Modeling | Scikit-learn · LightGBM · Optuna · SHAP |
 | Experiment tracking | MLflow |
 | API | FastAPI · Uvicorn · Pydantic |
 | Dashboard | Streamlit · Plotly |
 | Deployment | Railway (API) · Streamlit Community Cloud (UI) |
-| Version control | Git · GitHub |
+| Version control | GitHub |
 
 ---
 
