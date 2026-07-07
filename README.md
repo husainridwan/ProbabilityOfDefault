@@ -28,8 +28,7 @@
 | **Business problem** | Estimate default risk at loan origination for risk-based pricing and portfolio loss reduction |
 | **Dataset** | 619,655 loans (2023–2025) with borrower demographics, FirstCentral bureau data, and loan behaviour |
 | **Target** | Binary: 1 = default (90+ DPD or written-off), 0 = paid. Default rate: **20.79%** |
-| **Segments** | **C1** — first-time borrowers (DR: 42.9%) modelled separately from |
-                 **C2+** — returning borrowers (DR: 5–28%) |
+| **Segments** | **C1** — first-time borrowers (DR: 42.9%) modelled separately from **C2+** — returning borrowers (DR: 5–28%) |
 | **Best C1 model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.6774** · Gini: **0.3548** · KS: **0.2561** |
 | **Best C2+ model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.7572** · Gini: **0.5144** · KS: **0.3816** |
 
