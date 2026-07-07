@@ -1,0 +1,6 @@
+outs:
+- md5: 0b0c3ae28a32bcf246c98ba245583629
+  size: 4608
+  isexec: true
+  hash: md5
+  path: inference_artifacts.json

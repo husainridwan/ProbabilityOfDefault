@@ -1,0 +1,27 @@
+# dbt_project/dbt_project.yml
+
+name: 'pd_transforms' 
+version: '1.0.0'
+config-version: 2
+
+
+profile: 'pd_portfolio'
+
+model-paths: ["dbt_project/models"]
+analysis-paths: ["dbt_project/analyses"]
+test-paths: ["dbt_project/tests"]
+macro-paths: ["dbt_project/macros"]
+seed-paths: ["dbt_project/seeds"]
+
+seeds:
+  pd_transforms:
+    +delimiter: ","
+    +quote: ""
+    +header: true
+    +column_types: {}
+    +csv_reader_options:
+      all_varchar: true
+
+models:
+  pd_transforms:
+    +materialized: table

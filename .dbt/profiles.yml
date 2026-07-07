@@ -1,0 +1,8 @@
+# ~/.dbt/profiles.yml
+
+pd_portfolio:                
+  target: dev                
+  outputs:
+    dev:                    
+      type: duckdb          
+      path: 'data/interim/pd_data.duckdb'   # Where to create the database file
