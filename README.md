@@ -17,7 +17,7 @@
 
 🔗 **[Live Demo](https://your-streamlit-url.streamlit.app)** &nbsp;|&nbsp;
 📡 **[API Docs](https://your-railway-url.up.railway.app/docs)** &nbsp;|&nbsp;
-📊 **[Model Card](reports/model_card.md)**
+📊 **[Model Card](https://github.com/husainridwan/ProbabilityOfDefault/blob/main/notebooks/reports/model_card.md)**
 
 ---
 
@@ -176,9 +176,8 @@ Open [http://localhost:5000](http://localhost:5000) to compare all runs.
 
 | Stage | Tool | Description |
 |---|---|---|
-| SQL extraction | PostgreSQL + Metabase | Loan, user, bureau data joined across 3 tables |
-| Bureau parsing | Python + JSONB | Credit bureau json data |
-| Transformation | dbt-duckdb | 3-layer model: staging - intermediate - mart |
+| Data Extraction | PostgreSQL + Metabase | Loan, user, bureau data joined across 3 tables |
+| Data Transformation | dbt-duckdb | 3-layer model: staging - intermediate - mart |
 | Data versioning | DVC | Raw and processed data tracked, not stored in git |
 | Quality checks | Great Expectations | Schema, null rate, range validation before any transformation |
 
@@ -215,10 +214,10 @@ Cross-validation uses `StratifiedGroupKFold(groups=user_id)` to prevent borrower
 
 ### Why Two Models?
 
-EDA revealed a 30pp default rate gap between first-time borrowers (C1: 42.9%)
+EDA revealed over 30% default rate gap between first-time borrowers (C1: 42.9%)
 and returning borrowers (C25+: 5.4%). A single model averages across these
-populations and underperforms on both. C1 relies on bureau and demographic
-signals; C2+ relies on prior loan count and borrowing frequency.
+populations and underperforms on both. C1 model relies on bureau and demographic
+signals; C2+ model relies on prior loan count and borrowing frequency.
 
 ---
 
@@ -229,9 +228,9 @@ signals; C2+ relies on prior loan count and borrowing frequency.
   default probability by ~2.5× — 74% of all loans in the dataset hit this threshold
 - 📉 **Medium tenure** (31–60 days) has the highest default rate (31.2%) —
   non-monotonic signal captured by `is_medium_tenure` flag
-- 🏦 **Bureau data** adds more lift for C1 borrowers (no prior loan history)
-  than for C2+ borrowers where prior loan count dominates
-- 🚫 **Gender excluded** on both IV grounds (0.2pp gap) and CBN fair lending
+- 🏦 **Bureau data** adds more lift for first-time borrowers (no prior loan history)
+  than for returning borrowers where prior loan count dominates
+- 🚫 **Gender excluded** on both IV grounds (0.2% gap) and CBN fair lending
   regulatory compliance
 
 ---
@@ -239,7 +238,7 @@ signals; C2+ relies on prior loan count and borrowing frequency.
 ## ⚠️ Limitations
 
 - **Bureau data is self-reported** at inference — no live bureau API call in the
-  public demo. Model accuracy is higher in production where real bureau data is available.
+  public demo. Model accuracy should improve where real bureau data is available.
 - **Prior default rate excluded** — Lender's business rule (defaulters cannot
   re-borrow) means `prior_default_rate` has IV ≈ 0 in the training data and is not
   a usable feature despite being theoretically the strongest predictor.
@@ -250,7 +249,7 @@ signals; C2+ relies on prior loan count and borrowing frequency.
 
 ## 📋 Model Card
 
-See [`reports/model_card.md`](reports/model_card.md) for full documentation
+See [`notebooks/reports/model_card.md`](notebooks/reports/model_card.md) for full documentation
 including intended use, training data description, evaluation results, and
 fairness considerations.
 
@@ -262,7 +261,7 @@ fairness considerations.
 |---|---|
 | Data analytics | PostgreSQL · dbt-duckdb · DVC · Great Expectations |
 | Feature engineering | Python · Pandas · NumPy |
-| Modeling | Scikit-learn · LightGBM · Optuna · SHAP |
+| Modelling | Scikit-learn · LightGBM · Optuna · SHAP |
 | Experiment tracking | MLflow |
 | API | FastAPI · Uvicorn · Pydantic |
 | Dashboard | Streamlit · Plotly |
