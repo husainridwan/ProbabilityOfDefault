@@ -12,9 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ═══════════════════════════════════════════════════════════════════════
 # SELF‑CONTAINED SCORING LOGIC
-# ═══════════════════════════════════════════════════════════════════════
 
 THRESHOLDS_C1 = {
     "very_low": 0.30635292448046497,
@@ -104,7 +102,6 @@ def predict_pd(
     else:
         bh = 3
 
-    # Logit (coefficients from your logistic regression baseline)
     logit = -1.2
     logit += cardinal_log * -0.55
     logit += is_full_util * 0.55
@@ -131,12 +128,10 @@ def predict_pd(
     thresholds = THRESHOLDS_C1 if is_c1 else THRESHOLDS_C2
     band = get_risk_band(prob, thresholds)
     decision = get_decision(band)
-    return prob, band, decision, "C1" if is_c1 else "C2+"
+    return prob, band, decision, "L1" if is_c1 else "L2+"
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# STREAMLIT UI (unchanged – all CSS, sidebar, pages remain the same)
-# ═══════════════════════════════════════════════════════════════════════
+# STREAMLIT UI 
 
 st.markdown("""
 <style>
@@ -310,9 +305,7 @@ div[data-testid="stSidebar"] .stButton button:hover {
 """, unsafe_allow_html=True)
 
 
-# ═══════════════════════════════════════════════════════════════════════
 # SIDEBAR
-# ═══════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("""
     <div class="app-logo-wrap">
@@ -393,13 +386,11 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
-# ═══════════════════════════════════════════════════════════════════════
 # PAGE ROUTING
-# ═══════════════════════════════════════════════════════════════════════
 pg = st.session_state.get("page", "scorer")
 
 
-# ── SCORER PAGE ─────────────────────────────────────────────────────
+# SCORER PAGE
 if pg == "scorer":
     st.markdown("<div class='page-title'>Credit scorer</div>",
                 unsafe_allow_html=True)
@@ -415,17 +406,21 @@ if pg == "scorer":
                     "<div class='card-title'>Loan details</div>",
                     unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        loan_number      = c1.number_input(
+        loan_number = c1.number_input(
             "Loan number *(1 = first loan)*",
-            min_value=1, value=1, step=1)
+            min_value=1, value=1, step=1,
+            help="How many loans have you taken with this lender? 1 = first time.")
         principal_amount = c2.number_input(
             "Principal amount (₦)",
-            min_value=1000, value=50000, step=1000)
+            min_value=1000, value=50000, step=1000,
+            help="The amount you want to borrow.")
         c3, c4 = st.columns(2)
         credit_limit = c3.number_input(
-            "Credit limit (₦)", min_value=1000, value=50000, step=1000)
-        tenure       = c4.number_input(
-            "Tenure (days)", min_value=7, max_value=365, value=30)
+            "Credit limit (₦)", min_value=1000, value=50000, step=1000,
+            help="The maximum amount you are allowed to borrow. Often equals the principal.")
+        tenure = c4.number_input(
+            "Tenure (days)", min_value=7, max_value=365, value=30,
+            help="How many days you have to repay the loan.")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -434,15 +429,17 @@ if pg == "scorer":
                     unsafe_allow_html=True)
         b1, b2 = st.columns(2)
         monthly_income = b1.number_input(
-            "Monthly income (₦)", min_value=0, value=150000, step=5000)
-        age            = b2.number_input(
+            "Monthly income (₦)", min_value=0, value=150000, step=5000,
+            help="Your total monthly take‑home income before any deductions.")
+        age = b2.number_input(
             "Age", min_value=18, max_value=75, value=32)
         b3, b4 = st.columns(2)
-        state      = b3.selectbox("State of residence", [
+        state = b3.selectbox("State of residence", [
             "Lagos", "Abuja", "Rivers", "Oyo", "Kano", "Enugu",
             "Delta", "Anambra", "Ogun", "Osun", "Cross River", "Other"])
         days_since = b4.number_input(
-            "Days since last loan *(0 if first)*", min_value=0, value=0)
+            "Days since last loan *(0 if first)*", min_value=0, value=0,
+            help="How many days have passed since you last took a loan with this lender.")
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown(
@@ -452,174 +449,181 @@ if pg == "scorer":
             "letter-spacing:0'>— leave 0 if unknown</span></div>",
             unsafe_allow_html=True)
         h1, h2 = st.columns(2)
-        lender_count  = h1.number_input(
-            "Lenders borrowed from", min_value=0, value=0)
+        lender_count = h1.number_input(
+            "Lenders borrowed from", min_value=0, value=0,
+            help="How many different banks or lenders you currently have loans with.")
         enquiry_count = h2.number_input(
-            "Recent credit enquiries", min_value=0, value=0)
+            "Recent credit enquiries", min_value=0, value=0,
+            help="How many times has your credit report been checked in the last 12 months?")
         h3, h4 = st.columns(2)
         monthly_obligations = h3.number_input(
-            "Monthly obligations (₦)", min_value=0, value=0, step=1000)
-        total_debt          = h4.number_input(
-            "Total outstanding debt (₦)", min_value=0, value=0, step=5000)
+            "Monthly obligations (₦)", min_value=0, value=0, step=1000,
+            help="Total amount you pay each month towards all existing loans and credit cards.")
+        total_debt = h4.number_input(
+            "Total outstanding debt (₦)", min_value=0, value=0, step=5000,
+            help="If you paid off every loan and credit card today, how much would you owe in total?")
         h5, h6 = st.columns(2)
-        total_accounts  = h5.number_input(
-            "Total loan accounts", min_value=0, value=0)
+        total_accounts = h5.number_input(
+            "Total loan accounts", min_value=0, value=0,
+            help="The total number of open loans and credit accounts you currently have.")
         has_written_off = h6.selectbox(
             "Written-off account?", [0, 1],
-            format_func=lambda x: "No" if x == 0 else "Yes")
+            format_func=lambda x: "No" if x == 0 else "Yes",
+            help="Has a lender ever given up on collecting a debt from you (written it off)?")
         has_arrears = st.selectbox(
             "Currently in arrears?", [0, 1],
-            format_func=lambda x: "No" if x == 0 else "Yes")
+            format_func=lambda x: "No" if x == 0 else "Yes",
+            help="Are you currently late on any loan or credit card payment?")
         st.markdown("</div>", unsafe_allow_html=True)
 
         scored = st.button("Calculate PD score", type="primary",
-                            use_container_width=True)
+                           use_container_width=True)
 
-    with right:
-        if scored:
-            prob, band, decision, seg = predict_pd(
-                loan_number, principal_amount, credit_limit, tenure,
-                monthly_income, age, state,
-                lender_count, enquiry_count,
-                monthly_obligations, total_debt,
-                has_written_off, has_arrears, days_since,
-            )
+        with right:
+            if scored:
+                prob, band, decision, seg = predict_pd(
+                    loan_number, principal_amount, credit_limit, tenure,
+                    monthly_income, age, state,
+                    lender_count, enquiry_count,
+                    monthly_obligations, total_debt,
+                    has_written_off, has_arrears, days_since,
+                )
 
-            score_cls = ("score-green" if prob < 0.3
-                         else "score-amber" if prob < 0.5
-                         else "score-red")
-            clr       = ("#059669" if prob < 0.3
-                         else "#d97706" if prob < 0.5
-                         else "#dc2626")
-            badge_cls = "badge-" + band.lower().replace(" ", "-")
-            dec_clr   = ("#059669" if "Approve" in decision
-                         else "#d97706" if decision == "Review"
-                         else "#dc2626")
+                score_cls = ("score-green" if prob < 0.3
+                             else "score-amber" if prob < 0.5
+                             else "score-red")
+                clr = ("#059669" if prob < 0.3
+                       else "#d97706" if prob < 0.5
+                       else "#dc2626")
+                badge_cls = "badge-" + band.lower().replace(" ", "-")
+                dec_clr = ("#059669" if "Approve" in decision
+                           else "#d97706" if decision == "Review"
+                           else "#dc2626")
 
-            st.markdown(f"""
-            <div class='card'>
-                <div style='text-align:center;
-                            padding:1rem 1rem 0.75rem'>
-                    <div class='score-num {score_cls}'>
-                        {prob*100:.1f}%
+                st.markdown(f"""
+                <div class='card'>
+                    <div style='text-align:center;
+                                padding:1rem 1rem 0.75rem'>
+                        <div class='score-num {score_cls}'>
+                            {prob*100:.1f}%
+                        </div>
+                        <div class='score-sub' style='margin-top:4px'>
+                            Probability of Default
+                        </div>
                     </div>
-                    <div class='score-sub' style='margin-top:4px'>
-                        Probability of Default
+                    <div style='text-align:center;
+                                margin:0.5rem 0 1rem'>
+                        <span class='badge {badge_cls}'>
+                            {band} risk
+                        </span>
+                    </div>
+                    <div style='display:flex;
+                                justify-content:space-between;
+                                padding-top:0.75rem;
+                                border-top:1px solid #f1f5f9;
+                                font-size:13px;align-items:center'>
+                        <span style='color:#64748b;font-size:12px'>
+                            {seg}
+                        </span>
+                        <span style='color:{dec_clr};font-weight:700;
+                                     font-size:14px'>{decision}</span>
                     </div>
                 </div>
-                <div style='text-align:center;
-                            margin:0.5rem 0 1rem'>
-                    <span class='badge {badge_cls}'>
-                        {band} risk
-                    </span>
-                </div>
-                <div style='display:flex;
-                            justify-content:space-between;
-                            padding-top:0.75rem;
-                            border-top:1px solid #f1f5f9;
-                            font-size:13px;align-items:center'>
-                    <span style='color:#64748b;font-size:12px'>
-                        {seg}
-                    </span>
-                    <span style='color:{dec_clr};font-weight:700;
-                                 font-size:14px'>{decision}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=round(prob * 100, 1),
-                number={"suffix": "%",
-                        "font": {"size": 22, "color": clr}},
-                gauge={
-                    "axis":  {"range": [0, 100],
-                              "tickfont": {"size": 10},
-                              "tickcolor": "#94a3b8"},
-                    "bar":   {"color": clr, "thickness": 0.22},
-                    "bgcolor": "white", "borderwidth": 0,
-                    "steps": [
-                        {"range": [0,  25], "color": "#dcfce7"},
-                        {"range": [25, 45], "color": "#fef9c3"},
-                        {"range": [45, 65], "color": "#ffedd5"},
-                        {"range": [65, 100],"color": "#fee2e2"},
-                    ],
-                },
-            ))
-            fig.update_layout(
-                height=190,
-                margin=dict(t=20, b=10, l=20, r=20),
-                paper_bgcolor="white", plot_bgcolor="white",
-                font={"family": "Inter, sans-serif"},
-            )
-            st.plotly_chart(fig, use_container_width=True,
-                            config={"displayModeBar": False})
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=round(prob * 100, 1),
+                    number={"suffix": "%",
+                            "font": {"size": 22, "color": clr}},
+                    gauge={
+                        "axis": {"range": [0, 100],
+                                  "tickfont": {"size": 10},
+                                  "tickcolor": "#94a3b8"},
+                        "bar": {"color": clr, "thickness": 0.22},
+                        "bgcolor": "white", "borderwidth": 0,
+                        "steps": [
+                            {"range": [0, 25], "color": "#dcfce7"},
+                            {"range": [25, 45], "color": "#fef9c3"},
+                            {"range": [45, 65], "color": "#ffedd5"},
+                            {"range": [65, 100], "color": "#fee2e2"},
+                        ],
+                    },
+                ))
+                fig.update_layout(
+                    height=190,
+                    margin=dict(t=20, b=10, l=20, r=20),
+                    paper_bgcolor="white", plot_bgcolor="white",
+                    font={"family": "Inter, sans-serif"},
+                )
+                st.plotly_chart(fig, use_container_width=True,
+                                config={"displayModeBar": False})
 
-            inc  = max(float(monthly_income), 1)
-            lti  = float(principal_amount) / inc
-            util = float(principal_amount) / max(float(credit_limit), 1)
-            burd = lti * float(tenure) / 30
-            dsti = float(monthly_obligations) / inc
+                inc = max(float(monthly_income), 1)
+                lti = float(principal_amount) / inc
+                util = float(principal_amount) / max(float(credit_limit), 1)
+                burd = lti * float(tenure) / 30
+                dsti = float(monthly_obligations) / inc
 
-            st.markdown(f"""
-            <div class='card'>
-                <div class='card-title'>Derived metrics</div>
-                <div class='info-row'>
-                    <span class='info-key'>Loan-to-income ratio</span>
-                    <span class='info-val'>{lti:.2f}×</span>
+                st.markdown(f"""
+                <div class='card'>
+                    <div class='card-title'>Derived metrics</div>
+                    <div class='info-row'>
+                        <span class='info-key'>Loan-to-income ratio</span>
+                        <span class='info-val'>{lti:.2f}×</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>Credit utilisation</span>
+                        <span class='info-val'>{util*100:.0f}%</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>Repayment burden</span>
+                        <span class='info-val'>{burd:.2f}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>Bureau DSTI</span>
+                        <span class='info-val'>{dsti:.2f}</span>
+                    </div>
                 </div>
-                <div class='info-row'>
-                    <span class='info-key'>Credit utilisation</span>
-                    <span class='info-val'>{util*100:.0f}%</span>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class='card' style='text-align:center;
+                                         padding:3rem 1.5rem'>
+                    <div style='font-size:40px;margin-bottom:1rem'>🏦</div>
+                    <div style='font-size:15px;font-weight:700;
+                                color:#0f172a;margin-bottom:8px'>
+                        Enter loan details
+                    </div>
+                    <div style='font-size:13px;color:#94a3b8;line-height:1.6'>
+                        Fill in the form and click<br>
+                        <b style='color:#0f172a'>Calculate PD score</b>
+                    </div>
                 </div>
-                <div class='info-row'>
-                    <span class='info-key'>Repayment burden</span>
-                    <span class='info-val'>{burd:.2f}</span>
+                <div class='card'>
+                    <div class='card-title'>Model at a glance</div>
+                    <div class='info-row'>
+                        <span class='info-key'>L1 test AUC</span>
+                        <span class='info-val' style='color:#2563eb'>0.677</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>C2+ test AUC</span>
+                        <span class='info-val' style='color:#2563eb'>0.757</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>Training loans</span>
+                        <span class='info-val'>619,655</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>Overall default rate</span>
+                        <span class='info-val'>20.79%</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='info-key'>Unique borrowers</span>
+                        <span class='info-val'>167,990</span>
+                    </div>
                 </div>
-                <div class='info-row'>
-                    <span class='info-key'>Bureau DSTI</span>
-                    <span class='info-val'>{dsti:.2f}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class='card' style='text-align:center;
-                                     padding:3rem 1.5rem'>
-                <div style='font-size:40px;margin-bottom:1rem'>🏦</div>
-                <div style='font-size:15px;font-weight:700;
-                            color:#0f172a;margin-bottom:8px'>
-                    Enter loan details
-                </div>
-                <div style='font-size:13px;color:#94a3b8;line-height:1.6'>
-                    Fill in the form and click<br>
-                    <b style='color:#0f172a'>Calculate PD score</b>
-                </div>
-            </div>
-            <div class='card'>
-                <div class='card-title'>Model at a glance</div>
-                <div class='info-row'>
-                    <span class='info-key'>C1 test AUC</span>
-                    <span class='info-val' style='color:#2563eb'>0.677</span>
-                </div>
-                <div class='info-row'>
-                    <span class='info-key'>C2+ test AUC</span>
-                    <span class='info-val' style='color:#2563eb'>0.757</span>
-                </div>
-                <div class='info-row'>
-                    <span class='info-key'>Training loans</span>
-                    <span class='info-val'>619,655</span>
-                </div>
-                <div class='info-row'>
-                    <span class='info-key'>Overall default rate</span>
-                    <span class='info-val'>20.79%</span>
-                </div>
-                <div class='info-row'>
-                    <span class='info-key'>Unique borrowers</span>
-                    <span class='info-val'>167,990</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 
 # ── PERFORMANCE PAGE ─────────────────────────────────────────────────
@@ -634,22 +638,22 @@ elif pg == "performance":
     st.markdown("""
     <div class='metric-strip'>
         <div class='metric-tile'>
-            <div class='metric-tile-label'>C1 Test AUC</div>
+            <div class='metric-tile-label'>L1 Test AUC</div>
             <div class='metric-tile-val'>0.677</div>
             <div class='metric-tile-sub'>First-time borrowers</div>
         </div>
         <div class='metric-tile'>
-            <div class='metric-tile-label'>C1 Test Gini</div>
+            <div class='metric-tile-label'>L1 Test Gini</div>
             <div class='metric-tile-val'>0.355</div>
             <div class='metric-tile-sub'>= 2 × AUC − 1</div>
         </div>
         <div class='metric-tile'>
-            <div class='metric-tile-label'>C2+ Test AUC</div>
+            <div class='metric-tile-label'>L2+ Test AUC</div>
             <div class='metric-tile-val'>0.757</div>
             <div class='metric-tile-sub'>Returning borrowers</div>
         </div>
         <div class='metric-tile'>
-            <div class='metric-tile-label'>C2+ Test Gini</div>
+            <div class='metric-tile-label'>L2+ Test Gini</div>
             <div class='metric-tile-val'>0.514</div>
             <div class='metric-tile-sub'>Production-grade</div>
         </div>
@@ -658,21 +662,21 @@ elif pg == "performance":
 
     seg_c1, seg_c2, _ = st.columns([1, 1, 4])
     with seg_c1:
-        if st.button("C1 — first-time",
-                     type=("primary" if st.session_state.get("seg") == "C1"
+        if st.button("L1 — first-time",
+                     type=("primary" if st.session_state.get("seg") == "L1"
                            else "secondary"),
                      use_container_width=True):
-            st.session_state.seg = "C1"
+            st.session_state.seg = "L1"
             st.rerun()
     with seg_c2:
-        if st.button("C2+ — returning",
-                     type=("primary" if st.session_state.get("seg") == "C2+"
+        if st.button("L2+ — returning",
+                     type=("primary" if st.session_state.get("seg") == "L2+"
                            else "secondary"),
                      use_container_width=True):
-            st.session_state.seg = "C2+"
+            st.session_state.seg = "L2+"
             st.rerun()
 
-    is_c1    = st.session_state.get("seg", "C1") == "C1"
+    is_c1    = st.session_state.get("seg", "L1") == "L1"
     models   = ["LR", "RF", "LightGBM", "Ensemble"]
     val_aucs = ([0.663, 0.685, 0.682, 0.685] if is_c1
                 else [0.748, 0.761, 0.759, 0.762])
@@ -708,12 +712,12 @@ elif pg == "performance":
                     config={"displayModeBar": False})
 
     results = {
-        "C1":  {"val":  {"AUC": 0.685, "Gini": 0.370, "KS": 0.266},
+        "L1":  {"val":  {"AUC": 0.685, "Gini": 0.370, "KS": 0.266},
                 "test": {"AUC": 0.677, "Gini": 0.355, "KS": 0.256}},
-        "C2+": {"val":  {"AUC": 0.762, "Gini": 0.524, "KS": 0.387},
+        "L2+": {"val":  {"AUC": 0.762, "Gini": 0.524, "KS": 0.387},
                 "test": {"AUC": 0.757, "Gini": 0.514, "KS": 0.382}},
     }
-    r = results["C1" if is_c1 else "C2+"]
+    r = results["L1" if is_c1 else "L2+"]
     cv, ct = st.columns(2)
     for col, sk, sl in [(cv, "val", "Validation results"),
                         (ct, "test", "Test results")]:
@@ -769,16 +773,15 @@ elif pg == "performance":
         unsafe_allow_html=True)
 
 
-# PAGE 3 — EDA INSIGHTS
+# PAGE 3: EDA INSIGHTS & BUSINESS INTELLIGENCE 
 elif pg == "insights":
     st.markdown(
         "<div class='page-title'>📊 EDA Insights & Business Intelligence</div>",
         unsafe_allow_html=True)
     st.markdown(
         "<div class='page-sub'>"
-        "A data-driven investigation into default behaviour across 167k+ loans "
-        "from a Nigerian digital lender — uncovering the patterns that drive risk, "
-        "revenue, and portfolio health."
+        "What 167k+ resolved loans from a Nigerian digital lender tell us "
+        "about who defaults, when, and why."
         "</div>",
         unsafe_allow_html=True)
 
@@ -788,14 +791,13 @@ elif pg == "insights":
         <div class='card-title' style='color:#1d4ed8'>The Business Problem</div>
         <p style='font-size:14px;color:#1e3a5f;line-height:1.8;margin:0'>
             A Nigerian digital lender extends short-term installment loans to
-            over <b>167 thousand unique borrowers</b> — many of whom have no
-            formal credit history. With a portfolio default rate of
-            <b>20.79%</b>, nearly 1 in 5 loans ends in default. The challenge:
-            <em>who should be approved, at what amount, and on what terms?</em>
-            Without a reliable scoring system, the lender either leaves money
-            on the table by declining good borrowers, or absorbs avoidable
-            losses by approving bad ones. This analysis explores the data to
-            find where that boundary lies.
+            over <b>167 thousand unique borrowers</b>, many of whom have little
+            or no formal credit history. Nearly 1 in 5 loans ends in default.
+            The practical question is simple: <em>who should be approved, for
+            how much, and on what terms?</em> Without a reliable way to answer
+            that, the lender either turns away good customers out of caution or
+            takes losses on bad ones it could have avoided. This analysis digs
+            into the data to find where the real risk boundary sits.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -805,36 +807,35 @@ elif pg == "insights":
     # Insight 1
     st.markdown("""
     <div class='card'>
-        <div class='card-title'>
-            Insight 1: The First Loan is the Riskiest Bet
-        </div>
+        <div class='card-title'>Insight 1: The First Loan Is the Riskiest Bet</div>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            The single most predictive feature in the entire dataset —
-            with an Information Value of <b>0.596</b> — is how many loans
-            a borrower has previously taken. First-time borrowers (C1)
-            default at <b>42.9%</b>, nearly <b>8× the rate</b> of
-            borrowers on their 25th+ loan (5.4%).
+            Of all the features in the dataset, how many loans a borrower has
+            taken before turns out to be the most predictive, with an Information
+            Value of <b>0.596</b>. First-time borrowers default at <b>42.9%</b>.
+            By the time someone reaches their 25th loan with the same lender,
+            that rate is down to <b>5.4%</b>. That is an 8-fold difference driven
+            entirely by borrowing history.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            This is not just a statistical pattern — it reflects a
-            fundamental selection effect. Borrowers who repay their first
-            loan are approved for a second. Each successive loan is
-            <em>evidence of creditworthiness</em> that no bureau score
-            can fully capture for first-timers.
+            What's happening here is a selection effect, not just a correlation.
+            Every borrower who repays their first loan gets approved for a second.
+            Every second repayment earns a third. By the time someone has ten or
+            twenty loans on their record, they've already filtered themselves in.
+            No bureau score can replicate that for a first-time applicant, because
+            there's nothing to look at yet.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;margin:0'>
-            The implication is stark: <b>the entire C1 segment is
-            structurally riskier</b>, and a single model mixing C1 and
-            C2+ borrowers will systematically underestimate risk for
-            newcomers and over-restrict loyal customers.
+            Mixing first-timers and returning customers in a single model gets you
+            the worst of both worlds: you underestimate risk for new applicants
+            and over-restrict loyal ones who have already proven themselves.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
     fig1 = go.Figure()
-    groups = ["C1", "C2-C3", "C4-C5", "C6-C11", "C12-C24", "C25+"]
+    groups = ["L1", "L2-L3", "L4-L5", "L6-L11", "L12-L24", "L25+"]
     drs    = [0.4293, 0.2789, 0.1900, 0.1492, 0.0981, 0.0538]
     c1_colors = ["#dc2626" if d > 0.30 else
                  "#d97706" if d > 0.15 else "#059669" for d in drs]
@@ -859,46 +860,42 @@ elif pg == "insights":
     <div style='background:#fef9c3;border-radius:8px;
                 padding:0.75rem 1rem;margin-bottom:1rem;
                 border-left:3px solid #ca8a04'>
-        <b style='color:#92400e;font-size:12px'>
-            💼 Business recommendation
-        </b>
-        <p style='font-size:12px;color:#78350f;margin:4px 0 0;
-                  line-height:1.6'>
-            Treat C1 borrowers as a separate risk tier. Start with
-            conservative limits and short tenures. Use the first loan as
-            a qualifying test — not a profit centre. The real returns
-            come from C4+ borrowers who have proven themselves.
-            Invest in onboarding quality, not just volume.
+        <b style='color:#92400e;font-size:12px'>💼 Business recommendation</b>
+        <p style='font-size:12px;color:#78350f;margin:4px 0 0;line-height:1.6'>
+            Treat first-time borrowers as their own risk tier. Offer conservative
+            limits and short tenures. The first loan is a qualifying round, not
+            a revenue opportunity. The data shows returns come from L4+ borrowers
+            who've proven themselves. Focus on onboarding quality over volume.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Insight 2 
+    # Insight 2
     st.markdown("""
     <div class='card'>
         <div class='card-title'>
-            Insight 2: Borrowing at the Limit is a Default Signal
+            Insight 2: Maxing Out the Credit Limit Is a Warning Sign
         </div>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            <b>73.8% of all loans</b> were taken at exactly the
-            borrower's approved credit limit — a utilisation rate of
-            100%. These full-utilisation borrowers default at
-            <b>24.9%</b>, compared to just <b>9.2%</b> for those who
-            borrow below their limit — a <b>2.7× difference</b>.
+            <b>73.8% of loans</b> in this dataset were taken at exactly the
+            borrower's approved limit. That is not a coincidence; it is a
+            behaviour pattern. Borrowers who took the full amount default at
+            <b>24.9%</b>. Those who borrowed less than their limit default at
+            <b>9.2%</b>, less than half the rate.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            This connects directly to first-time borrowers being most
-            likely to take their full limit. A first-time borrower who
-            maxes out their limit is in the <b>highest-risk
-            intersection</b> in the dataset.
+            This connects directly to Insight 1. First-time borrowers are the
+            most likely to take everything on offer, combining two high-risk
+            signals at once. Someone on their first loan who also maxes out their
+            limit sits in the riskiest intersection in the entire dataset.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;margin:0'>
-            Borrowers who take less than their limit signal financial
-            discipline — they know what they can repay. Borrowers who
-            max out may be cash-stressed, credit-hungry, or testing
-            the system.
+            Borrowing below the limit isn't just a financial decision; it signals
+            that someone knows what they can comfortably repay. Borrowers who
+            take everything available may be stretched thin, or they may simply
+            be testing the system.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -926,48 +923,45 @@ elif pg == "insights":
     <div style='background:#fef9c3;border-radius:8px;
                 padding:0.75rem 1rem;margin-bottom:1rem;
                 border-left:3px solid #ca8a04'>
-        <b style='color:#92400e;font-size:12px'>
-            💼 Business recommendation
-        </b>
-        <p style='font-size:12px;color:#78350f;margin:4px 0 0;
-                  line-height:1.6'>
-            Introduce tiered limits rather than binary approve/decline.
-            For first-time borrowers requesting their full limit, offer
-            70–80% of the requested amount. Borrowers who voluntarily
-            take less than their limit on subsequent loans are strong
-            candidates for proactive limit increases.
+        <b style='color:#92400e;font-size:12px'>💼 Business recommendation</b>
+        <p style='font-size:12px;color:#78350f;margin:4px 0 0;line-height:1.6'>
+            Move away from binary approve/decline. For first-time applicants
+            requesting their full limit, offer 70–80% instead. Borrowers who
+            voluntarily take less than their limit on later loans are good
+            candidates for proactive increases.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Insight 3 
+    # Insight 3
     st.markdown("""
     <div class='card'>
         <div class='card-title'>
-            Insight 3: Medium-Tenure Loans Have a Hidden Risk Spike
+            Insight 3: Medium-Tenure Loans Have a Risk Spike Nobody Expects
         </div>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            Loan tenure follows a <b>non-monotonic</b> relationship
-            with default — not the linear pattern you might expect.
-            Short loans (≤15 days) default at <b>15.5%</b>, well below
-            the portfolio average. But 31–60 day loans spike to
-            <b>31.2%</b> — the highest of any tenure band — before
-            falling back toward 22–24% for longer tenures.
+            You'd expect default risk to rise smoothly with loan length. It
+            doesn't. Short loans of 15 days default at <b>15.5%</b>,
+            well below the portfolio average. Then 60-day loans jump to
+            <b>31.2%</b>, the highest of any tenure, before falling back
+            toward 22–24% for longer products. There's a spike right in
+            the middle.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;margin:0'>
-            This middle-tenure spike reflects a <em>borrower type
-            mismatch</em>: short loans attract salary-advance borrowers
-            who repay within one pay cycle. Medium-tenure loans attract
-            borrowers who may be overestimating their future income
-            stability — a pattern common in emerging market informal
-            employment.
+            The likely reason is that different tenures attract different
+            types of borrowers. Short loans pull in salary-advance customers who
+            know exactly when their money is coming and repay reliably within
+            one pay cycle. The medium-tenure group tends to include borrowers who
+            need more time but may be overestimating how stable their income will
+            be over the next two months. That gap between expectation and reality
+            shows up as defaults.
         </p>
     </div>
     """, unsafe_allow_html=True)
-
-    tenure_labels = ["≤15 days", "16–30 days", "31–60 days",
-                     "61–90 days", "91–180 days", ">180 days"]
+    
+    tenure_labels = ["15 days", "30 days", "60 days",
+                     "90 days", "91–180 days", ">180 days"]
     tenure_drs    = [0.1553, 0.1955, 0.3124, 0.2383, 0.2237, 0.2446]
     tenor_colors  = ["#059669" if d < 0.20
                      else "#dc2626" if d > 0.28
@@ -994,46 +988,41 @@ elif pg == "insights":
     <div style='background:#fef9c3;border-radius:8px;
                 padding:0.75rem 1rem;margin-bottom:1rem;
                 border-left:3px solid #ca8a04'>
-        <b style='color:#92400e;font-size:12px'>
-            💼 Business recommendation
-        </b>
-        <p style='font-size:12px;color:#78350f;margin:4px 0 0;
-                  line-height:1.6'>
-            Apply stricter income verification for 31–60 day products.
-            Push first-time borrowers toward shorter tenures. A 30-day
-            loan at a lower amount is a better first-loan offering than
-            a 60-day loan at the full limit.
+        <b style='color:#92400e;font-size:12px'>💼 Business recommendation</b>
+        <p style='font-size:12px;color:#78350f;margin:4px 0 0;line-height:1.6'>
+            Apply tighter income checks and lower caps for 60-day loans.
+            For new borrowers especially, a 30-day loan at a lower amount is
+            a safer starting point than a 60-day loan at the full limit.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Insight 4 
+    # Insight 4
     st.markdown("""
     <div class='card'>
         <div class='card-title'>
-            Insight 4: Geography Encodes Structural Economic Risk
+            Insight 4: Where Borrowers Live Tells You Something Income Data Can't
         </div>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            State of residence carries meaningful predictive power
-            (IV 0.035) — not because of geography per se, but because
-            it proxies for <b>income stability, employment formality,
-            and economic infrastructure</b>.
+            State of residence carries predictive power (IV 0.035), but not
+            because geography itself matters. It's a stand-in for things that
+            are harder to measure directly: <b>income regularity, employment
+            formality, and local economic conditions</b>.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            Osun (27.8%), Anambra (26.8%), Abia (26.2%), and Cross
-            River (26.1%) have the highest default rates — all states
-            with high informal sector employment. Lagos at 18.6% sits
-            near the portfolio average despite being the largest state
-            by volume (36% of all loans). Abuja at 16.1% is the safest,
-            reflecting the civil servant-heavy population with stable
-            government salaries.
+            Osun (27.8%), Anambra (26.8%), Abia (26.2%), and Cross River (26.1%)
+            come out worst. These are states with large informal sectors and lower
+            average incomes relative to Lagos. Lagos itself sits near the
+            portfolio average at 18.6%, despite accounting for 36% of all loans.
+            Abuja comes out best at 16.1%, reflecting its high concentration
+            of civil servants with predictable government salaries.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;margin:0'>
-            <b>Geography is a poverty proxy</b> when income data is
-            self-reported and potentially unreliable. It adds signal
-            precisely because it is harder to misreport than income.
+            Geography works as a signal here because it's harder to misreport
+            than income. A borrower can tell you they earn any amount; their
+            address is harder to fake.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -1056,7 +1045,7 @@ elif pg == "insights":
                    annotation_position="top",
                    annotation_font={"size": 9})
     fig4.update_layout(
-        title="Default Rate — Top States by Volume", height=320,
+        title="Default Rate: Top States by Volume", height=320,
         margin=dict(t=40, b=10, l=0, r=60),
         paper_bgcolor="white", plot_bgcolor="white",
         xaxis=dict(tickformat=".0%", gridcolor="#f8fafc", range=[0, 0.34]),
@@ -1070,45 +1059,41 @@ elif pg == "insights":
     <div style='background:#fef9c3;border-radius:8px;
                 padding:0.75rem 1rem;margin-bottom:1rem;
                 border-left:3px solid #ca8a04'>
-        <b style='color:#92400e;font-size:12px'>
-            💼 Business recommendation
-        </b>
-        <p style='font-size:12px;color:#78350f;margin:4px 0 0;
-                  line-height:1.6'>
-            Apply state-based limit modifiers: reduce maximum loan
-            amounts in high-default states for first-time borrowers
-            while keeping terms consistent for proven repeat borrowers.
-            Consider employer verification partnerships in Abuja
-            (civil service) as a low-cost income stability signal.
+        <b style='color:#92400e;font-size:12px'>💼 Business recommendation</b>
+        <p style='font-size:12px;color:#78350f;margin:4px 0 0;line-height:1.6'>
+            Apply state-based limit adjustments for first-time borrowers in
+            high-default states. For returning customers with a clean repayment
+            record, geography matters less; keep their terms consistent.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Insight 5 
+    # Insight 5
     st.markdown("""
     <div class='card'>
         <div class='card-title'>
-            Insight 5: Employment Type Predicts Repayment Reliability
+            Insight 5: Employment Status Predicts Repayment Better Than Income
         </div>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            Employment status carries a 30pp spread in default rates —
-            not because of income level (salary data is self-reported
-            and unreliable) but because it proxies for
-            <b>income regularity and predictability</b>.
+            There's a 30% spread in default rates across employment categories. 
+            Declared income doesn't explain it, partly because income is self-reported 
+            and partly because the real driver isn't how much someone earns; 
+            it's how reliably they earn it.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            Retired borrowers default at just <b>9.4%</b> — reflecting
-            pension income that is stable and direct-deposited.
-            Public servants (15.6%) and employed workers (18.7%) follow.
-            Self-employed borrowers (24.4%) and students (31.2%) carry
-            the highest risk, with unemployed borrowers at 39.8%.
+            Retired borrowers default at just <b>9.4%</b>. Pension income is
+            stable and deposited on a predictable schedule, which makes it
+            easier to plan repayments around. Public servants (15.6%) and
+            formally employed workers (18.7%) follow for similar reasons.
+            Self-employed borrowers (24.4%) and students (31.2%) are where
+            things break down, and unemployed borrowers at 39.8% represent
+            the highest-risk group in the dataset.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;margin:0'>
-            The key underwriting question is not
-            <em>how much does the borrower earn</em> but
-            <em>how reliably do they earn it</em>.
+            The underwriting question worth asking is less about salary level
+            and more about whether that income shows up on a regular schedule.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -1144,66 +1129,59 @@ elif pg == "insights":
     <div style='background:#fef9c3;border-radius:8px;
                 padding:0.75rem 1rem;margin-bottom:1rem;
                 border-left:3px solid #ca8a04'>
-        <b style='color:#92400e;font-size:12px'>
-            💼 Business recommendation
-        </b>
-        <p style='font-size:12px;color:#78350f;margin:4px 0 0;
-                  line-height:1.6'>
-            Weight employment type in underwriting independently of
-            declared income. For self-employed borrowers, require bank
-            statement verification to confirm income regularity —
-            6 months of transaction history is more reliable than a
-            declared monthly figure. For students, enforce shorter
-            tenures and lower limits regardless of declared income.
+        <b style='color:#92400e;font-size:12px'>💼 Business recommendation</b>
+        <p style='font-size:12px;color:#78350f;margin:4px 0 0;line-height:1.6'>
+            Factor employment type into underwriting separately from declared
+            income. For self-employed applicants, bank statement verification
+            is much more useful than a salary declaration. For students, enforce
+            short tenures and low limits regardless of what they report unless a 
+            solid proof of consistent income is provided.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Summary 
+    # Summary
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
     <div class='card' style='border-left:4px solid #059669;
                               background:linear-gradient(135deg,
                               #f0fdf4 0%, #f8fafc 100%)'>
         <div class='card-title' style='color:#065f46'>
-            What It All Means Together
+            Putting It All Together
         </div>
         <p style='font-size:13px;color:#1e3a5f;line-height:1.85;
                   margin:0 0 0.75rem 0'>
-            These five insights are not isolated findings — they form
-            a connected narrative about <b>who digital loan borrowers
-            are in Nigeria and how they behave</b>.
+            These five patterns aren't independent. They stack. A first-time
+            borrower who also maxes out their limit, picks a medium tenure,
+            and is self-employed is combining four separate
+            risk signals at once. The model picks this up through interaction
+            features, but even the raw exploratory data makes it visible.
         </p>
         <p style='font-size:13px;color:#1e3a5f;line-height:1.85;
                   margin:0 0 0.75rem 0'>
-            The highest-risk borrower profile: a <b>first-time
-            applicant</b> who requests their <b>full credit limit</b>
-            on a <b>31–60 day loan</b>, who is <b>self-employed or a
-            student</b>, lives in a <b>high-default state</b>, and has
-            either <b>no bureau data or a thin file</b>. That borrower
-            is not necessarily a bad person — they may simply be in a
-            genuinely precarious financial position.
+            On the other side, the safest borrowers in the dataset are returning
+            customers who borrow below their limit, on short tenures, and have
+            stable formal employment. They default at under 5% and carry the
+            portfolio. Everything in the modelling and deployment was built around
+            separating these two groups as cleanly as possible.
         </p>
         <p style='font-size:13px;color:#1e3a5f;line-height:1.85;
                   margin:0 0 1rem 0'>
-            Conversely, the safest borrower is a <b>returning
-            high-cardinal customer</b> who borrows <b>below their
-            limit</b>, on a <b>short tenure</b>, is <b>retired or a
-            public servant</b>, and has a <b>clean multi-lender bureau
-            history</b>. These borrowers default at under 5% and
-            represent the core of a profitable, sustainable portfolio.
+            That's what the PD model does in production: it takes these signals,
+            combines them with bureau and demographic features, and returns a
+            calibrated probability so the lender can make a consistent,
+            data-driven decision on every application.
         </p>
         <div style='display:flex;gap:2rem;padding-top:1rem;
                     border-top:1px solid #d1fae5;flex-wrap:wrap'>
             <div>
                 <div style='font-size:11px;color:#6b7280;
-                            text-transform:uppercase;
-                            letter-spacing:0.06em'>
-                    Highest-risk segment
+                            text-transform:uppercase;letter-spacing:0.06em'>
+                    Highest-risk profile
                 </div>
                 <div style='font-size:15px;font-weight:700;
                             color:#dc2626;margin-top:3px'>
-                    C1 · Full util · 31-60d · Unknown channel
+                    L1 · Full limit · 60d · Self-employed
                 </div>
                 <div style='font-size:12px;color:#94a3b8;margin-top:2px'>
                     Estimated DR ~55–65%
@@ -1211,13 +1189,12 @@ elif pg == "insights":
             </div>
             <div>
                 <div style='font-size:11px;color:#6b7280;
-                            text-transform:uppercase;
-                            letter-spacing:0.06em'>
-                    Lowest-risk segment
+                            text-transform:uppercase;letter-spacing:0.06em'>
+                    Lowest-risk profile
                 </div>
                 <div style='font-size:15px;font-weight:700;
                             color:#059669;margin-top:3px'>
-                    C25+ · Under limit · ≤30d · Organic / Referral
+                    L25+ · Under limit · Short tenure · Employed
                 </div>
                 <div style='font-size:12px;color:#94a3b8;margin-top:2px'>
                     Estimated DR ~2–5%
@@ -1230,9 +1207,8 @@ elif pg == "insights":
     st.markdown("""
     <div style='text-align:center;padding:1rem;
                 font-size:11px;color:#94a3b8;line-height:1.6'>
-        Analysis based on 167k+ resolved loans from a Nigerian digital
-        lending platform over 2 years. All default rates represent
-        resolved loans only (Paid, Default, or Paid-Default).
-        Active and overdue loans excluded to prevent label contamination.
+        Based on 167k+ resolved loans from a Nigerian digital lender, 2023–2025.
+        Analysis covers loans with a fully resolved outcome (paid or defaulted).
+        Active and overdue loans were excluded to prevent label contamination.
     </div>
     """, unsafe_allow_html=True)
