@@ -10,13 +10,15 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **A production-grade end-to-end machine learning pipeline** that predicts the
-> probability of default (PD) for short-term installment loans in an emerging
-> market digital lending context, with full experiment tracking, SHAP explainability, 
-> and a live public scoring API.
+> This was built while working in fintech risk analytics, this project answers a
+> question I was dealing with daily: how do you decide who to lend to when
+> most of your borrowers have little or no formal credit history? I took
+> 619k+ real loan records, built a segmented scoring model from scratch,
+> and shipped it as a live web app. Everything from data extraction to
+> deployment is here.
 
-🔗 **[Live Demo](https://your-streamlit-url.streamlit.app)** &nbsp;|&nbsp;
-📡 **[API Docs](https://your-railway-url.up.railway.app/docs)** &nbsp;|&nbsp;
+🔗 **[Live Demo](https://defaultpredictorapp.streamlit.app)** &nbsp;|&nbsp;
+📡 **[API Docs](https://defaultpredictorapp.onrender.app/docs)** &nbsp;|&nbsp;
 📊 **[Model Card](https://github.com/husainridwan/ProbabilityOfDefault/blob/main/notebooks/reports/model_card.md)**
 
 ---
@@ -26,11 +28,11 @@
 | | |
 |---|---|
 | **Business problem** | Estimate default risk at loan origination for risk-based pricing and portfolio loss reduction |
-| **Dataset** | 619,655 loans with borrower demographics, credit bureau data, and loan behaviour |
+| **Dataset** | 619k+ loans with borrower demographics, credit bureau data, and loan behaviour |
 | **Target** | Binary: 1 = default (90+ DPD or written-off), 0 = paid. Default rate: **20.79%** |
-| **Segments** | First-time borrowers (**C1**- DR: 42.9%) modelled separately from returning borrowers (**C2+**- DR: 5–28%) |
-| **Best C1 model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.6774** · Gini: **0.3548** · KS: **0.2561** |
-| **Best C2+ model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.7572** · Gini: **0.5144** · KS: **0.3816** |
+| **Segments** | First-time borrowers (**L1**- DR: 42.9%) modelled separately from returning borrowers (**L2+**- DR: 5–28%) |
+| **Best L1 model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.6774** · Gini: **0.3548** · KS: **0.2561** |
+| **Best L2+ model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.7572** · Gini: **0.5144** · KS: **0.3816** |
 
 ---
 
@@ -68,7 +70,7 @@ Raw CSV (619k loans)
              ▼
 ┌─────────────────────────────────┐
 │  Deployment                     │
-│  FastAPI  → Railway             │
+│  FastAPI  → Render              │
 │  Streamlit → Streamlit Cloud    │
 └─────────────────────────────────┘
 ```
@@ -181,6 +183,16 @@ Open [http://localhost:5000](http://localhost:5000) to compare all runs.
 | Data versioning | DVC | Raw and processed data tracked, not stored in git |
 | Quality checks | Great Expectations | Schema, null rate, range validation before any transformation |
 
+### Why two separate models?
+
+First-time borrowers and returning borrowers are not the same credit problem.
+They default at 42.9% on their first loan; by the time someone has
+taken 25 loans with the same lender, their default rate is 5.4%. A single
+model averaging across both groups would be too conservative with good returning
+customers and not cautious enough with new ones. So I trained separate models:
+the L1 model leans on bureau signals and demographics, while L2+ gets the
+additional benefit of prior loan count and days between loans.
+
 ### Feature Engineering
 
 - **24 features** surviving IV ranking (≥ 0.02) and correlation filter (r ≤ 0.85)
@@ -197,14 +209,14 @@ The **Soft Voting Ensemble** was the best performer for both segments.
 
 | Segment | Model                   | Val AUC | Test AUC | Test Gini | Test KS |
 |---------|-------------------------|---------|----------|-----------|---------|
-| C1      | Logistic Regression     | 0.6629  | 0.6566   | 0.3131    | 0.2182  |
-| C1      | Random Forest           | 0.6848  | 0.6792   | 0.3584    | 0.2536  |
-| C1      | LightGBM + Optuna       | 0.6823  | 0.6759   | 0.3517    | 0.2513  |
-| C1      | **Ensemble (LR+RF+LGBM)** | **0.6851** | **0.6774** | **0.3548** | **0.2561** |
-| C2+     | Logistic Regression     | 0.7481  | 0.7433   | 0.4866    | 0.3628  |
-| C2+     | Random Forest           | 0.7614  | 0.7572   | 0.5144    | 0.3789  |
-| C2+     | LightGBM + Optuna       | 0.7592  | 0.7556   | 0.5112    | 0.3770  |
-| C2+     | **Ensemble (LR+RF+LGBM)** | **0.7619** | **0.7572** | **0.5144** | **0.3816** |
+| L1      | Logistic Regression     | 0.6629  | 0.6566   | 0.3131    | 0.2182  |
+| L1      | Random Forest           | 0.6848  | 0.6792   | 0.3584    | 0.2536  |
+| L1      | LightGBM + Optuna       | 0.6823  | 0.6759   | 0.3517    | 0.2513  |
+| L1      | **Ensemble (LR+RF+LGBM)** | **0.6851** | **0.6774** | **0.3548** | **0.2561** |
+| L2+     | Logistic Regression     | 0.7481  | 0.7433   | 0.4866    | 0.3628  |
+| L2+     | Random Forest           | 0.7614  | 0.7572   | 0.5144    | 0.3789  |
+| L2+     | LightGBM + Optuna       | 0.7592  | 0.7556   | 0.5112    | 0.3770  |
+| L2+     | **Ensemble (LR+RF+LGBM)** | **0.7619** | **0.7572** | **0.5144** | **0.3816** |
 
 Risk bands were calibrated from the validation set.  
 (See `models/inference_artifacts.json` for thresholds.)
@@ -212,38 +224,25 @@ Risk bands were calibrated from the validation set.
 All models calibrated with isotonic regression on validation set.
 Cross-validation uses `StratifiedGroupKFold(groups=user_id)` to prevent borrower-level leakage within the training fold.
 
-### Why Two Models?
-
-EDA revealed over 30% default rate gap between first-time borrowers (C1: 42.9%)
-and returning borrowers (C25+: 5.4%). A single model averages across these
-populations and underperforms on both. C1 model relies on bureau and demographic
-signals; C2+ model relies on prior loan count and borrowing frequency.
-
 ---
 
-## 📊 Key Findings
+## 📊 What the Data Shows
 
-- 🔑 **Loan sequence** is the strongest predictor: `cardinal_log` IV = 0.596
-- ⚠️ **Full credit utilisation** (borrowing at exactly the approved limit) increases
-  default probability by ~2.5× — 74% of all loans in the dataset hit this threshold
-- 📉 **Medium tenure** (31–60 days) has the highest default rate (31.2%) —
-  non-monotonic signal captured by `is_medium_tenure` flag
-- 🏦 **Bureau data** adds more lift for first-time borrowers (no prior loan history)
-  than for returning borrowers where prior loan count dominates
-- 🚫 **Gender excluded** on both IV grounds (0.2% gap) and CBN fair lending
-  regulatory compliance
+A few things stand out from the exploratory analysis that shaped the whole
+modelling approach:
 
----
-
-## ⚠️ Limitations
-
-- **Bureau data is self-reported** at inference — no live bureau API call in the
-  public demo. Model accuracy should improve where real bureau data is available.
-- **Prior default rate excluded** — Lender's business rule (defaulters cannot
-  re-borrow) means `prior_default_rate` has IV ≈ 0 in the training data and is not
-  a usable feature despite being theoretically the strongest predictor.
-- **Temporal coverage**: training data from 2023–2025. Model should be retrained
-  quarterly and monitored monthly using PSI.
+- 🔑 **Loan sequence dominates everything.** `cardinal_log` had an IV of 0.596,
+  the highest of any feature. Borrowing history is the clearest signal we have.
+- ⚠️ **Maxing out the credit limit is a risk flag.** 74% of loans hit the approved
+  limit exactly, and those borrowers default at 2.7x the rate of people who
+  borrow less than their limit.
+- 📉 **Medium-tenure loans are riskier than long ones.** 60-day loans default
+  at 31.2%, the highest of any tenure. The pattern is non-monotonic, which
+  is easy to miss if you just look at averages.
+- 🏦 **Bureau data matters more for first-time borrowers.** For returning borrowers,
+  prior loan count tells you more than any bureau score.
+- 🚫 **Gender was excluded.** The default rate gap between groups was 0.2%, 
+below the IV threshold and excluded on fair lending grounds.
 
 ---
 

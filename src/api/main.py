@@ -64,7 +64,7 @@ STATE_TIER_MAP = ARTIFACTS.get("state_tier_map", {})
 PRODUCT_MAP = ARTIFACTS.get("product_map", {})
 CHANNEL_MAP = ARTIFACTS.get("channel_map", {})
 
-print(f"✅ Models loaded. C1 features: {len(FEATURES_C1)}, C2+ features: {len(FEATURES_C2)}")
+print(f"✅ Models loaded. L1 features: {len(FEATURES_C1)}, L2+ features: {len(FEATURES_C2)}")
 
 # FastAPI app
 app = FastAPI(title="PD Model API – Digital Lending", version="1.0.0")
@@ -202,7 +202,7 @@ def predict(loan: LoanApplication):
             probability_of_default=round(prob, 4),
             risk_band=band,
             decision=decision,
-            model_used="C1" if is_c1 else "C2+",
+            model_used="L1" if is_c1 else "L2+",
         )
     except Exception as e:
         print("=" * 60)
@@ -214,8 +214,8 @@ def predict(loan: LoanApplication):
 @app.get("/model-info")
 def model_info():
     return {
-        "c1_features": len(FEATURES_C1),
-        "c2_features": len(FEATURES_C2),
-        "c1_test_auc": 0.677,
-        "c2_test_auc": 0.757,
+        "l1_features": len(FEATURES_C1),
+        "l2_features": len(FEATURES_C2),
+        "l1_test_auc": 0.677,
+        "l2_test_auc": 0.757,
     }
