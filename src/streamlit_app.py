@@ -14,14 +14,14 @@ st.set_page_config(
 
 # SELF‑CONTAINED SCORING LOGIC
 
-THRESHOLDS_C1 = {
+THRESHOLDS_L1 = {
     "very_low": 0.30635292448046497,
     "low": 0.4018747348051978,
     "medium": 0.4937549307785776,
     "high": 0.5669315532763081,
 }
 
-THRESHOLDS_C2 = {
+THRESHOLDS_L2 = {
     "very_low": 0.04330989678211953,
     "low": 0.09597715750236256,
     "medium": 0.18393348812710986,
@@ -125,7 +125,7 @@ def predict_pd(
         logit += 0.45
 
     prob = 1 / (1 + np.exp(-logit))
-    thresholds = THRESHOLDS_C1 if is_c1 else THRESHOLDS_C2
+    thresholds = THRESHOLDS_L1 if is_c1 else THRESHOLDS_L2
     band = get_risk_band(prob, thresholds)
     decision = get_decision(band)
     return prob, band, decision, "L1" if is_c1 else "L2+"
