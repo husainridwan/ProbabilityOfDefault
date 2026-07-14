@@ -780,7 +780,7 @@ elif pg == "insights":
         unsafe_allow_html=True)
     st.markdown(
         "<div class='page-sub'>"
-        "What 167k+ resolved loans from a Nigerian digital lender tell us "
+        "What 619k+ resolved loans from a Nigerian digital lender tell us "
         "about who defaults, when, and why."
         "</div>",
         unsafe_allow_html=True)
@@ -790,9 +790,9 @@ elif pg == "insights":
     <div class='card' style='border-left:4px solid #2563eb;background:#f0f6ff'>
         <div class='card-title' style='color:#1d4ed8'>The Business Problem</div>
         <p style='font-size:14px;color:#1e3a5f;line-height:1.8;margin:0'>
-            A Nigerian digital lender extends short-term installment loans to
+            A Nigerian digital lender extends installment loans to
             over <b>167 thousand unique borrowers</b>, many of whom have little
-            or no formal credit history. Nearly 1 in 5 loans ends in default.
+            or no formal credit history. Of which, nearly 1 in 5 loans ends in default.
             The practical question is simple: <em>who should be approved, for
             how much, and on what terms?</em> Without a reliable way to answer
             that, the lender either turns away good customers out of caution or
@@ -812,10 +812,10 @@ elif pg == "insights":
                   margin:0 0 0.75rem 0'>
             Of all the features in the dataset, how many loans a borrower has
             taken before turns out to be the most predictive, with an Information
-            Value of <b>0.596</b>. First-time borrowers default at <b>42.9%</b>.
-            By the time someone reaches their 25th loan with the same lender,
-            that rate is down to <b>5.4%</b>. That is an 8-fold difference driven
-            entirely by borrowing history.
+            Value of <b>0.596</b>. 
+            First-time borrowers default at <b>42.9%</b>. By the time someone reaches 
+            their 25th loan with the same lender, that rate is down to <b>5.4%</b>. 
+            That is an 8-fold difference driven entirely by borrowing history.
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
@@ -886,7 +886,7 @@ elif pg == "insights":
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;
                   margin:0 0 0.75rem 0'>
-            This connects directly to Insight 1. First-time borrowers are the
+            This points out that first-time borrowers are the
             most likely to take everything on offer, combining two high-risk
             signals at once. Someone on their first loan who also maxes out their
             limit sits in the riskiest intersection in the entire dataset.
@@ -950,7 +950,7 @@ elif pg == "insights":
         </p>
         <p style='font-size:13px;color:#475569;line-height:1.8;margin:0'>
             The likely reason is that different tenures attract different
-            types of borrowers. Short loans pull in salary-advance customers who
+            types of borrowers. Short-term loans pull in salary-advance customers who
             know exactly when their money is coming and repay reliably within
             one pay cycle. The medium-tenure group tends to include borrowers who
             need more time but may be overestimating how stable their income will
@@ -1151,7 +1151,7 @@ elif pg == "insights":
         </div>
         <p style='font-size:13px;color:#1e3a5f;line-height:1.85;
                   margin:0 0 0.75rem 0'>
-            These five patterns aren't independent. They stack. A first-time
+            These five patterns aren't independent, they stack. A first-time
             borrower who also maxes out their limit, picks a medium tenure,
             and is self-employed is combining four separate
             risk signals at once. The model picks this up through interaction
@@ -1167,7 +1167,7 @@ elif pg == "insights":
         </p>
         <p style='font-size:13px;color:#1e3a5f;line-height:1.85;
                   margin:0 0 1rem 0'>
-            That's what the PD model does in production: it takes these signals,
+            That's what this PD model does: it takes these signals,
             combines them with bureau and demographic features, and returns a
             calibrated probability so the lender can make a consistent,
             data-driven decision on every application.
@@ -1207,7 +1207,7 @@ elif pg == "insights":
     st.markdown("""
     <div style='text-align:center;padding:1rem;
                 font-size:11px;color:#94a3b8;line-height:1.6'>
-        Based on 167k+ resolved loans from a Nigerian digital lender, 2023–2025.
+        Based on 619k+ resolved loans from a Nigerian digital lender, 2023–2025.
         Analysis covers loans with a fully resolved outcome (paid or defaulted).
         Active and overdue loans were excluded to prevent label contamination.
     </div>
