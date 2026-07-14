@@ -607,7 +607,7 @@ if pg == "scorer":
                         <span class='info-val' style='color:#2563eb'>0.677</span>
                     </div>
                     <div class='info-row'>
-                        <span class='info-key'>C2+ test AUC</span>
+                        <span class='info-key'>L2+ test AUC</span>
                         <span class='info-val' style='color:#2563eb'>0.757</span>
                     </div>
                     <div class='info-row'>
