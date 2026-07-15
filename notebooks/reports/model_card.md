@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Model type** | Soft-voting ensemble (Logistic Regression + Random Forest + LightGBM) + Optuna |
-| **Segments** | Two separate models: C1 (first-time borrowers) and C2+ (returning borrowers) |
+| **Segments** | Two separate models: L1 (first-time borrowers) and L2+ (returning borrowers) |
 | **Version** | 1.0 |
 | **Date** | July 2026 |
 | **Framework** | scikit-learn 1.4, LightGBM 4.3, Optuna 3.x |
@@ -33,8 +33,8 @@ markets without retraining.
 | **Size** | 619,655 loans across 167,990 unique borrowers |
 | **Date range** | January 2023 – December 2025 |
 | **Split strategy** | Random user-level split 70/15/15 (all loans per user in one split) |
-| **Default rate** | 20.79% overall · 40.94% C1 · 14.65% C2+ |
-| **Target definition** | 1 = loan_status IN (3=Default, 5=Paid after default) · 0 = loan_status 4 (Paid) |
+| **Default rate** | 20.79% overall · 40.94% L1 · 14.65% L2+ |
+| **Target definition** | 1 = Default | 0 = No Default |
 
 ## Features
 
@@ -47,11 +47,11 @@ filter (r ≤ 0.85).
 | Product & channel | product_type, channel_group |
 | Demographics | age, salary_log, state_risk_tier_enc |
 | Bureau (self-reported at inference) | distinct_lender_count, total_monthly_obligations, total_bureau_accounts, bureau_dsti, bureau_annual_dti, bureau_health_score, total_outstanding_debt, total_enquiry_count, prop_bad, arrears_ratio |
-| Prior behaviour (C2+ only) | prior_loan_count, days_since_last_loan |
+| Prior behaviour (L2+ only) | prior_loan_count, days_since_last_loan |
 
 **Excluded features and reasons:**
 
-- `gender` — 0.2pp default rate gap (IV < 0.02) and CBN fair lending compliance
+- `gender` — 0.2% default rate gap (IV < 0.02) and CBN fair lending compliance
 - `prior_default_rate` / `ever_defaulted` — IV ≈ 0.000; business rule prevents
   re-lending to defaulters, so prior defaults are structurally absent from training data
 - `bureau_account_rating` — IV 0.003, weakest bureau signal
@@ -59,7 +59,7 @@ filter (r ≤ 0.85).
 
 ## Evaluation Results
 
-### C1 Model (First-time Borrowers)
+### L1 Model (First-time Borrowers)
 
 | Metric | Validation | Test |
 |---|---|---|
@@ -67,9 +67,9 @@ filter (r ≤ 0.85).
 | Gini | 0.370 | **0.355** |
 | KS Statistic | 0.266 | **0.256** |
 | PR-AUC | — | **0.590** |
-| Brier Score | — | **0.221** |
 
-### C2+ Model (Returning Borrowers)
+
+### L2+ Model (Returning Borrowers)
 
 | Metric | Validation | Test |
 |---|---|---|
@@ -77,11 +77,11 @@ filter (r ≤ 0.85).
 | Gini | 0.524 | **0.514** |
 | KS Statistic | 0.387 | **0.382** |
 | PR-AUC | — | **0.347** |
-| Brier Score | — | **0.117** |
+
 
 ### Risk Band Calibration (from validation set)
 
-**C1 Model:**
+**L1 Model:**
 | Band | Default Rate | Interpretation |
 |---|---|---|
 | Very Low | 18.3% | Approve |
@@ -90,7 +90,7 @@ filter (r ≤ 0.85).
 | High | 54.3% | Decline or reduce limit |
 | Very High | 66.0% | Decline |
 
-**C2+ Model:**
+**L2+ Model:**
 | Band | Default Rate | Interpretation |
 |---|---|---|
 | Very Low | 1.8% | Auto-approve |
@@ -103,7 +103,7 @@ filter (r ≤ 0.85).
 
 1. **Bureau data is self-reported at inference**: The public demo API
    collects bureau features through plain-language questions (e.g. "how many
-   lenders have you borrowed from?"). In production, live FirstCentral API
+   lenders have you borrowed from?"). In a live production use, credit bureau API
    calls would replace self-reporting and improve accuracy.
 
 2. **Prior default rate is structurally absent**: Borrowers who defaulted
@@ -117,23 +117,12 @@ filter (r ≤ 0.85).
    The temporal split was tested but produced a bureau coverage gap
    (40% train vs 3% test) due to the structure of the bureau data pull.
 
-4. **C1 model performance**: AUC 0.677 for first-time borrowers reflects
+4. **L1 model performance**: AUC 0.677 for first-time borrowers reflects
    the inherent difficulty of scoring thin-file applicants with no internal
    history. Bureau and demographic signals provide the primary lift.
 
-## Ethical Considerations
-
-- **Gender excluded** from all models on fairness and regulatory grounds.
-  Gender had a 0.2pp default rate difference between classes (below IV
-  threshold) and its inclusion would violate CBN Fair Lending guidelines.
-- **No disparate impact analysis** has been conducted across state, age,
-  or employment groups.
-- **Model explainability** is provided via SHAP values for all predictions.
-  Top drivers are surfaced to the end user via the API response.
-
 ## Monitoring Recommendations
 
-- **PSI** monthly on all 24 features. PSI > 0.25 triggers retraining.
 - **AUC monitoring** weekly on new loan cohorts as they mature.
 - **Default rate by risk band** monthly to verify bands remain calibrated.
-- **Retrain trigger** if test AUC drops more than 3pp below training AUC.
+- **Retrain trigger** if test AUC drops more than 3% below training AUC.
