@@ -1,282 +1,302 @@
-# 🏦 Probability of Default (PD) Model — Digital Lending
+# 🏦 Probability of Default — Segmented Credit Scoring for Digital Lending
+
+**A pooled credit model told us thin-file borrowers and repeat borrowers were
+the same risk. They default at 41% and 15%. This project splits them, scores
+them separately, and explains every decision.**
 
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![LightGBM](https://img.shields.io/badge/LightGBM-4.3-9ACD32?logo=lightgbm&logoColor=white)](https://lightgbm.readthedocs.io/)
 [![MLflow](https://img.shields.io/badge/MLflow-2.11-0194E2?logo=mlflow&logoColor=white)](https://mlflow.org/)
 [![dbt](https://img.shields.io/badge/dbt-1.7-FF694B?logo=dbt&logoColor=white)](https://www.getdbt.com/)
 [![DVC](https://img.shields.io/badge/DVC-3.x-945DD5?logo=dvc&logoColor=white)](https://dvc.org/)
-[![Optuna](https://img.shields.io/badge/Optuna-3.x-6C63FF)](https://optuna.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> This was built while working in fintech risk analytics, this project answers a
-> question I was dealing with daily: how do you decide who to lend to when
-> most of your borrowers have little or no formal credit history? I took
-> 619k+ real loan records, built a segmented scoring model from scratch,
-> and shipped it as a live web app. Everything from data extraction to
-> deployment is here.
-
-🔗 **[Live Demo](https://defaultpredictorapp.streamlit.app)** &nbsp;|&nbsp;
-📡 **[API Docs](https://defaultpredictorapp.onrender.app/docs)** &nbsp;|&nbsp;
-📊 **[Model Card](https://github.com/husainridwan/ProbabilityOfDefault/blob/main/notebooks/reports/model_card.md)**
+🔗 **[Live demo](https://defaultpredictorapp.streamlit.app)** ·
+📊 **[Model card](notebooks/reports/model_card.md)** ·
+📡 **[Author](https://github.com/husainridwan)**
 
 ---
 
-## 📌 Project Overview
+## 📌 The Business Problem
 
-| | |
+A digital lender in Nigeria writes short-tenor instalment loans to a mostly
+thin-file population i.e., customers with little or no formal credit history. Two
+decisions have to be made at origination: **approve or decline**, and **at what
+limit**. Both need a probability of default.
+
+The obvious approach is one model over the whole book. That approach is wrong
+here, and the data says so plainly:
+
+| Segment | Default rate |
 |---|---|
-| **Business problem** | Estimate default risk at loan origination for risk-based pricing and portfolio loss reduction |
-| **Dataset** | 619k+ loans with borrower demographics, credit bureau data, and loan behaviour |
-| **Target** | Binary: 1 = default (90+ DPD or written-off), 0 = paid. Default rate: **20.79%** |
-| **Segments** | First-time borrowers (**L1**- DR: 42.9%) modelled separately from returning borrowers (**L2+**- DR: 5–28%) |
-| **Best L1 model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.6774** · Gini: **0.3548** · KS: **0.2561** |
-| **Best L2+ model** | `Ensemble [(LR+RF+LGBM) + Optuna]` — AUC: **0.7572** · Gini: **0.5144** · KS: **0.3816** |
+| **L1** — first loan with the lender | **40.9%** |
+| **L2+** — returning borrower | **14.7%** |
+| Whole book (619,655 loans) | 20.8% |
+
+A single model trained across both learns an average that fits neither. It is
+too pessimistic about a customer on their twelfth loan and too optimistic about
+one on their first; and those are the two decisions that matter most. The cost
+of getting it wrong is asymmetric: over-declining good returning customers
+kills the repeat business the unit economics depend on, while under-pricing
+first-timers writes losses directly.
+
+**So this project trains two models and routes each application to the right
+one.**
 
 ---
 
-## 🏗️ Architecture
+## What was built
 
 ```
-Raw CSV (619k loans)
-    │
-    ▼
-┌─────────────────────────────────┐
-│  Data Analytics                 │
-│  PostgreSQL SQL + dbt-duckdb    │
-│  Bureau JSON parsing            │
-│  DVC for data versioning        │
-└────────────┬────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────┐
-│  Feature Engineering            │
-│  Temporal grouped split         │
-│  IV ranking · Correlation filter│
-│  24 engineered features         │
-└────────────┬────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────┐
-│  Model Development              │
-│  LR baseline → RF → LightGBM    │
-│  Optuna tuning (150 trials)     │
-│  Soft-voting ensemble           │
-│  MLflow experiment tracking     │
-│  SHAP explainability            │
-└────────────┬────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────┐
-│  Deployment                     │
-│  FastAPI  → Render              │
-│  Streamlit → Streamlit Cloud    │
-└─────────────────────────────────┘
+619,655 loans · 167,990 borrowers · Jan 2023 – Dec 2025
+        │
+        ▼
+┌───────────────────────────────────────────────┐
+│  Extract & model         PostgreSQL → dbt     │
+│  Loan, user, and bureau tables joined;        │
+│  staging → marts; DVC versions the data       │
+└───────────────────┬───────────────────────────┘
+                    ▼
+┌───────────────────────────────────────────────┐
+│  Features                24 survivors         │
+│  Information Value ≥ 0.02 · correlation ≤ 0.85│
+│  Grouped user-level split, no borrower leakage│
+└───────────────────┬───────────────────────────┘
+                    ▼
+┌───────────────────────────────────────────────┐
+│  Two models              L1  and  L2+         │
+│  LogReg → RandomForest → LightGBM + Optuna    │
+│  Soft-voting ensemble · isotonic calibration  │
+│  MLflow tracking · SHAP explanations          │
+└───────────────────┬───────────────────────────┘
+                    ▼
+┌───────────────────────────────────────────────┐
+│  Serve                   FastAPI · Streamlit  │
+│  Score → risk band → per-feature explanation  │
+└───────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Project Structure
+## Results
+
+Held-out test set, split by borrower so no customer appears in both train and
+test.
+
+| Segment | Model | Test AUC | Gini | KS |
+|---|---|---|---|---|
+| L1 | Logistic Regression | 0.657 | 0.313 | 0.218 |
+| L1 | Random Forest | 0.679 | 0.358 | 0.254 |
+| L1 | LightGBM + Optuna | 0.676 | 0.352 | 0.251 |
+| **L1** | **Ensemble (LR+RF+LGBM)** | **0.677** | **0.355** | **0.256** |
+| L2+ | Logistic Regression | 0.743 | 0.487 | 0.363 |
+| L2+ | Random Forest | 0.757 | 0.514 | 0.379 |
+| L2+ | LightGBM + Optuna | 0.756 | 0.511 | 0.377 |
+| **L2+** | **Ensemble (LR+RF+LGBM)** | **0.757** | **0.514** | **0.382** |
+
+**Read these numbers honestly.** L2+ at AUC 0.757 is a usable production
+model. L1 at 0.677 is weak in absolute terms and that is the expected result
+when scoring applicants with no internal history. The point of the segmentation
+is not that L1 becomes good; it is that L1's weakness stops contaminating the
+L2+ score, where most of the lending volume and nearly all of the repeat
+revenue sits.
+
+The ensemble barely beats Random Forest alone on L2+ (0.7572 vs 0.7572 on AUC,
+separating only on KS). If you are reproducing this and want a simpler
+artefact to maintain, Random Forest alone is a defensible choice; the ensemble
+earns its place mainly through stability across the two segments, not through a
+headline metric.
+
+### Risk bands — what the score actually authorises
+
+Calibrated on the validation set, so each band carries an observed default rate
+rather than an arbitrary cut.
+
+| Band | L1 default rate | L1 action | L2+ default rate | L2+ action |
+|---|---|---|---|---|
+| Very low | 18.3% | Approve | 1.8% | Auto-approve |
+| Low | 35.5% | Approve, monitor | 6.8% | Approve |
+| Medium | 44.7% | Manual review | 13.5% | Approve with conditions |
+| High | 54.3% | Decline or cut limit | 23.1% | Manual review |
+| Very high | 66.0% | Decline | 37.9% | Decline |
+
+Note that a *"very low"* first-time borrower (18.3%) is riskier than a *"high"*
+returning one (23.1%) is close to. The bands are segment-relative on purpose —
+a single global cut-off would decline nearly the entire L1 population, which is
+the acquisition funnel.
+
+---
+
+## What the data showed
+
+Five findings that changed the modelling approach:
+
+**Loan sequence dominates every other signal.** `cardinal_log` - how many loans
+the customer has taken carries an Information Value of 0.596, several times
+any other feature. Borrowing history beats every bureau field available.
+
+**Maxing the limit is a red flag.** 74% of loans use the approved limit
+exactly, and those borrowers default at ~2.7× the rate of customers who take
+less than offered. Full utilisation became an explicit feature
+(`is_full_utilisation`, plus an interaction with the L1 flag).
+
+**Risk by tenure is non-monotonic.** 60-day loans default at 31.2% - worse than
+both shorter and longer tenors. A linear tenure term would have missed this
+entirely; it is captured with a medium-tenure indicator.
+
+**Bureau data earns its keep only for first-timers.** For L2+, internal prior
+behaviour outperforms every purchased bureau signal. That has a direct cost
+implication: bureau pulls are worth paying for on L1 applications and largely
+redundant on L2+.
+
+**Prior default rate is structurally useless here.** IV ≈ 0.000; not because
+defaults do not predict defaults, but because policy blocks defaulters from
+re-borrowing, so they are absent from the training data by construction. This
+is the kind of feature that looks predictive in theory and is empty in
+practice; `prior_loan_count` proxies borrower tenure instead.
+
+**`gender` was excluded** on two independent grounds: an IV below the 0.02
+threshold (a 0.2pp default-rate gap) and CBN fair-lending compliance. Full
+exclusion rationale is in the [model card](notebooks/reports/model_card.md).
+
+---
+
+## Why these technical choices
+
+**Two models rather than one interaction term.** An `is_first_loan` flag inside
+a pooled model lets the tree split on segment, but it still shares
+hyperparameters, calibration, and feature importances across two populations
+whose *best available signals differ*; L1 leans on bureau and demographics,
+L2+ on internal history. Separate models let each optimise independently and be
+monitored independently.
+
+**Grouped split, not a row-level one.** All loans belonging to a borrower go
+into a single split, and cross-validation uses
+`StratifiedGroupKFold(groups=user_id)`. Without this, the same customer's
+loan #3 lands in train and loan #4 in test, and the model scores its own
+history back — inflated AUC that vanishes in production.
+
+**Isotonic calibration.** Ranking is not enough when the output feeds a risk
+band with a stated default rate. Calibration is what makes "13.5% band" mean
+13.5%.
+
+**Soft voting over stacking.** Stacking adds a meta-learner and a second layer
+to validate, monitor, and explain. On this data it was not buying enough to
+justify the operational cost.
+
+**SHAP, not just global importances.** A declined applicant is entitled to a
+reason, and a reviewer overriding the model needs to see what drove the score.
+Global feature importance cannot answer "why *this* application".
+
+---
+
+## Known limitations
+
+Stated plainly, because a credit model whose limits are undocumented is not
+deployable.
+
+1. **Bureau features are self-reported in the public demo.** The hosted app
+   asks plain-language questions ("how many lenders have you borrowed from?").
+   Production would replace these with bureau API calls. Demo accuracy is
+   therefore optimistic relative to what self-reported inputs would deliver in
+   a real funnel, where applicants have an incentive to under-report.
+
+2. **No temporal validation.** The split is random at borrower level, not
+   forward in time, so these metrics do not evidence stability across a
+   changing macro environment. A temporal split *was* attempted and produced a
+   bureau coverage gap between train and test (40% vs 3%) driven by how the
+   bureau data pull was constructed; an artefact of the data, not of the
+   method. Until that is resolved, treat these numbers as in-sample-in-time.
+   Production use needs monthly retraining on a rolling window with PSI
+   monitoring.
+
+3. **L1 AUC of 0.677 is genuinely weak.** It is deployable only alongside
+   manual review on the medium band and conservative initial limits. The honest
+   framing is that thin-file scoring is hard, not that this model solved it.
+
+4. **Trained on one lender, one market, one product.** Nigerian short-tenor
+   digital lending. Not transferable to mortgages, SME, or longer tenors
+   without retraining — see the model card's out-of-scope section.
+
+---
+
+## Repository
 
 ```
-PD/
-├── 📂 data/
-│   ├── raw/                    
-│   └── processed/                
-├── 📂 dbt_project/             
+├── notebooks/
+│   ├── 01_data_cleaning.ipynb      raw → cleaned, bureau JSON parsed
+│   ├── 02_feature_engr.ipynb       IV ranking, correlation filter, grouped split
+│   ├── 03_model_dev.ipynb          LR → RF → LGBM → ensemble, Optuna, SHAP
+│   └── reports/
+│       ├── model_card.md           intended use, limits, fairness
+│       ├── shap_c1.png             L1 explanations
+│       ├── shap_c2plus.png         L2+ explanations
+│       └── model_comparison_*.png  per-segment model comparison
+├── dbt_project/
 │   └── models/
-│       ├── staging/            
-│       ├── intermediate/       
-│       └── marts/              
-├── 📂 models/                  
-│   ├── best_model_c1.pkl
-│   ├── best_model_c2plus.pkl
-│   └── inference_artifacts.json
-├── 📂 notebooks/
-│   ├── 01_data_cleaning.ipynb
-│   ├── 02_feature_engr.ipynb
-│   └── 03_model_dev.ipynb
-├── 📂 reports/                 
-│   ├── shap_c1.png
-│   ├── shap_c2plus.png
-│   ├── model_comparison_c1.png
-│   └── model_card.md
-├── 📂 src/
-│   ├── api/main.py          
-│   └── streamlit_app.py    
-├── .dvc/                   
-├── dvc.yaml                
-├── requirements.txt
-├── Procfile                
-└── README.md
+│       ├── staging/stg_data.sql
+│       └── marts/fct_model_features.sql
+├── src/
+│   ├── api/main.py                 FastAPI scoring service
+│   └── streamlit_app.py            self-contained demo UI
+├── models/                         DVC-tracked artefacts (.pkl, thresholds)
+├── data/                           DVC-tracked; not in git
+├── Procfile                        uvicorn entrypoint
+└── requirements.txt
 ```
 
 ---
 
-## ⚡ Quick Start
+## Reproducing this
 
-### Prerequisites
-- Python 3.10+
-- Git
-
-### 1 — Clone and install
+Requires Python 3.10+ and Git.
 
 ```bash
 git clone https://github.com/husainridwan/ProbabilityOfDefault.git
-cd PD
-python -m venv .venv
-source .venv/bin/activate      
+cd ProbabilityOfDefault
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2 — Pull data (DVC)
+**Data.** The loan data is proprietary and DVC-tracked, so `dvc pull` needs
+remote access that this repo does not grant publicly. To run the pipeline on
+your own data, place a CSV at `data/raw/data.csv` with the schema documented in
+`notebooks/01_data_cleaning.ipynb` and run the notebooks in order.
 
 ```bash
-dvc pull
+cd dbt_project && dbt deps && dbt run && dbt test && cd ..   # transformations
+jupyter notebook                                             # 01 → 02 → 03
+mlflow ui --backend-store-uri ./mlruns                       # compare runs
+uvicorn src.api.main:app --reload                            # API at :8000/docs
+streamlit run src/streamlit_app.py                           # UI at :8501
 ```
 
-> If you don't have DVC remote access, place your csv data at
-> `data/raw/loan_data.csv` and run the notebooks in order.
-
-### 3 — Run dbt transformations
-
-```bash
-cd dbt_project
-dbt deps
-dbt run
-dbt test
-cd ..
-```
-
-### 4 — Run notebooks in order
-
-```bash
-jupyter notebook
-```
-
-Open and execute in sequence:
-1. `01_data_cleaning.ipynb`
-2. `02_feature_engr.ipynb`
-3. `03_model_dev.ipynb`
-
-Each notebook saves its outputs to `data/processed/` and `models/`.
-
-### 5 — View MLflow experiment dashboard
-
-```bash
-mlflow ui --backend-store-uri ../mlruns
-```
-
-Open [http://localhost:5000](http://localhost:5000) to compare all runs.
+The Streamlit app is self-contained as it carries its own scoring logic and
+thresholds, so it runs without the DVC-tracked model artefacts.
 
 ---
 
-## 🔬 Methodology
-
-### Data Pipeline
-
-| Stage | Tool | Description |
-|---|---|---|
-| Data Extraction | PostgreSQL + Metabase | Loan, user, bureau data joined across 3 tables |
-| Data Transformation | dbt-duckdb | 3-layer model: staging - intermediate - mart |
-| Data versioning | DVC | Raw and processed data tracked, not stored in git |
-| Quality checks | Great Expectations | Schema, null rate, range validation before any transformation |
-
-### Why two separate models?
-
-First-time borrowers and returning borrowers are not the same credit problem.
-They default at 42.9% on their first loan; by the time someone has
-taken 25 loans with the same lender, their default rate is 5.4%. A single
-model averaging across both groups would be too conservative with good returning
-customers and not cautious enough with new ones. So I trained separate models:
-the L1 model leans on bureau signals and demographics, while L2+ gets the
-additional benefit of prior loan count and days between loans.
-
-### Feature Engineering
-
-- **24 features** surviving IV ranking (≥ 0.02) and correlation filter (r ≤ 0.85)
-- **Random user split**: Loans were split randomly into 70/15/15 (all loans per user in one split)
-- Users spanning periods go entirely into train — no borrower-level leakage
-- Prior behaviour features (`prior_loan_count`, `days_since_last_loan`) computed with expanding window sorted by `(user_id, approval_date)`
-- State risk tier encoded from training-set default rates only and applied to all splits
-
-
-## 📊 Model Performance
-
-Both models were evaluated on a held‑out test set (randomly split by user).  
-The **Soft Voting Ensemble** was the best performer for both segments.
-
-| Segment | Model                   | Val AUC | Test AUC | Test Gini | Test KS |
-|---------|-------------------------|---------|----------|-----------|---------|
-| L1      | Logistic Regression     | 0.6629  | 0.6566   | 0.3131    | 0.2182  |
-| L1      | Random Forest           | 0.6848  | 0.6792   | 0.3584    | 0.2536  |
-| L1      | LightGBM + Optuna       | 0.6823  | 0.6759   | 0.3517    | 0.2513  |
-| L1      | **Ensemble (LR+RF+LGBM)** | **0.6851** | **0.6774** | **0.3548** | **0.2561** |
-| L2+     | Logistic Regression     | 0.7481  | 0.7433   | 0.4866    | 0.3628  |
-| L2+     | Random Forest           | 0.7614  | 0.7572   | 0.5144    | 0.3789  |
-| L2+     | LightGBM + Optuna       | 0.7592  | 0.7556   | 0.5112    | 0.3770  |
-| L2+     | **Ensemble (LR+RF+LGBM)** | **0.7619** | **0.7572** | **0.5144** | **0.3816** |
-
-Risk bands were calibrated from the validation set.  
-(See `models/inference_artifacts.json` for thresholds.)
-
-All models calibrated with isotonic regression on validation set.
-Cross-validation uses `StratifiedGroupKFold(groups=user_id)` to prevent borrower-level leakage within the training fold.
-
----
-
-## 📊 What the Data Shows
-
-A few things stand out from the exploratory analysis that shaped the whole
-modelling approach:
-
-- 🔑 **Loan sequence dominates everything.** `cardinal_log` had an IV of 0.596,
-  the highest of any feature. Borrowing history is the clearest signal we have.
-- ⚠️ **Maxing out the credit limit is a risk flag.** 74% of loans hit the approved
-  limit exactly, and those borrowers default at 2.7x the rate of people who
-  borrow less than their limit.
-- 📉 **Medium-tenure loans are riskier than long ones.** 60-day loans default
-  at 31.2%, the highest of any tenure. The pattern is non-monotonic, which
-  is easy to miss if you just look at averages.
-- 🏦 **Bureau data matters more for first-time borrowers.** For returning borrowers,
-  prior loan count tells you more than any bureau score.
-- 🚫 **Gender was excluded.** The default rate gap between groups was 0.2%, 
-below the IV threshold and excluded on fair lending grounds.
-
----
-
-## 📋 Model Card
-
-See [`notebooks/reports/model_card.md`](notebooks/reports/model_card.md) for full documentation
-including intended use, training data description, evaluation results, and
-fairness considerations.
-
----
-
-## 🛠️ Tech Stack
+## Stack
 
 | Layer | Tools |
 |---|---|
-| Data analytics | PostgreSQL · dbt-duckdb · DVC · Great Expectations |
-| Feature engineering | Python · Pandas · NumPy |
-| Modelling | Scikit-learn · LightGBM · Optuna · SHAP |
+| Transformation | PostgreSQL · dbt (duckdb adapter) |
+| Data versioning | DVC |
+| Features & modelling | pandas · NumPy · scikit-learn · LightGBM · Optuna |
+| Explainability | SHAP |
 | Experiment tracking | MLflow |
-| API | FastAPI · Uvicorn · Pydantic |
-| Dashboard | Streamlit · Plotly |
-| Deployment | Railway (API) · Streamlit Community Cloud (UI) |
-| Version control | GitHub |
+| Serving | FastAPI · Uvicorn · Pydantic · Streamlit · Plotly |
 
 ---
 
-## 👤 Author
+## Author
 
-**Ridwanllah Husain** — Risk & Data Analyst  
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?logo=linkedin)](https://www.linkedin.com/in/ridwanllah-husain-655458195/)
-[![GitHub](https://img.shields.io/badge/GitHub-husainridwan-181717?logo=github)](https://github.com/husainridwan)
+**Ridwanllah Husain** — Risk & Data Analyst
+[GitHub](https://github.com/husainridwan) ·
+[LinkedIn](https://www.linkedin.com/in/ridwanllah-husain/) ·
+h.ridwan707@gmail.com
 
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
+Built while working in fintech risk analytics, on the question I dealt with
+daily: how do you decide who to lend to when most of your borrowers have no
+formal credit history?
